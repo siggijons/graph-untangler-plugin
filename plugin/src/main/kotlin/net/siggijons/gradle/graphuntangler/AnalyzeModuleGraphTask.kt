@@ -420,9 +420,12 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
             .associateWith { project ->
                 DependencyNode(
                     project = project.path,
+                    // TODO: create better abstractions.
+                    // TODO: assumes matching on first
+                    // TODO: assumes GitHub's @Org/Team name and that dropping org is desired
                     owner = ownerMap.entries.firstOrNull {
                         project.path.startsWith(it.key)
-                    }?.value,
+                    }?.value?.split("/")?.lastOrNull(),
                     changeRate = frequencyMap[project.path],
                     normalizedChangeRate = frequencyMap[project.path]?.let { rate ->
                         rate / maxChangeRate
