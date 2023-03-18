@@ -15,6 +15,7 @@ import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 import org.jgrapht.alg.TransitiveReduction
 import org.jgrapht.alg.scoring.BetweennessCentrality
+import org.jgrapht.alg.shortestpath.FloydWarshallShortestPaths
 import org.jgrapht.graph.DefaultDirectedGraph
 import org.jgrapht.nio.DefaultAttribute
 import org.jgrapht.nio.dot.DOTExporter
@@ -75,7 +76,8 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                     "degree",
                     "inDegree",
                     "outDegree",
-                    "depth"
+                    "depth",
+                    "eccentricity"
                 )
             }
             graphStatistics.nodes.forEach {
@@ -85,7 +87,8 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                     it.degree,
                     it.inDegree,
                     it.outDegree,
-                    it.depth
+                    it.depth,
+                    it.eccentricity
                 )
             }
         }.renderText().also {
@@ -138,6 +141,10 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
             )
         }
 
+        val measures = measure()
+
+        logger.warn("$measures")
+
         val nodes = roots.first().let { root ->
             val iterator = BreadthFirstIterator(this, root)
             val stats = mutableListOf<NodeStatistics>()
@@ -151,7 +158,8 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                     degree = degreeOf(node),
                     inDegree = inDegreeOf(node),
                     outDegree = outDegreeOf(node),
-                    depth = iterator.getDepth(node)
+                    depth = iterator.getDepth(node),
+                    eccentricity = measures.eccentricityMap[node] ?: -1.0
                 )
                 stats.add(s)
             }
@@ -162,6 +170,27 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
             nodes = nodes
         )
     }
+
+    private fun DefaultDirectedGraph<String, DependencyEdge>.measure(): Measures<String> {
+        val algorithm = FloydWarshallShortestPaths(this)
+        val eccentricityMap = vertexSet().associateWith { u ->
+            vertexSet().maxOf { v ->
+                val pathWeight = algorithm.getPathWeight(u, v)
+                if (pathWeight != Double.POSITIVE_INFINITY) pathWeight
+                else 0.0
+            }
+        }
+        val diameter = vertexSet().maxOf { eccentricityMap[it] ?: 0.0 }
+        return Measures(
+            diameter = diameter,
+            eccentricityMap = eccentricityMap
+        )
+    }
+
+    data class Measures<V>(
+        val diameter: Double,
+        val eccentricityMap: Map<V, Double>
+    )
 
     private fun depthGraph(
         graph: DefaultDirectedGraph<String, DependencyEdge>,
