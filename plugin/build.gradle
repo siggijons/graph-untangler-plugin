@@ -38,11 +38,11 @@ gradlePlugin {
   website = 'https://github.com/siggijons/graph-untangler-plugin'
   vcsUrl = 'https://github.com/siggijons/graph-untangler-plugin.git'
   plugins {
-    gradletestPlugin {
+    graphuntanglerPlugin {
       id = 'net.siggijons.gradle.graphuntangler'
       displayName = 'Graph Untangler Plugin'
       description = 'Gradle plugin to help untangle your dependencies.'
-      tags.addAll('graph', 'multiprojects', 'module', 'gradle')
+      tags.set(['graph', 'multiprojects', 'module', 'gradle'])
       implementationClass = 'net.siggijons.gradle.graphuntangler.GraphUntanglerPlugin'
     }
   }
