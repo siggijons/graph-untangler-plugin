@@ -6,18 +6,18 @@ import java.io.InputStream
 
 class OwnerFileReader {
 
-    fun read(string: String): Map<String, String> {
+    fun read(string: String): Owners {
         return string.byteInputStream().use { read(it) }
     }
 
-    fun read(file: File): Map<String, String> {
+    fun read(file: File): Owners {
         return file.inputStream().use {
             read(it)
         }
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun read(inputStream: InputStream): Map<String, String> {
+    fun read(inputStream: InputStream): Owners {
         val yaml = Yaml()
         val data: Map<String, Map<Any, Any>> = yaml.load(inputStream)
         return data.flatMap { (id, map) ->
@@ -28,6 +28,6 @@ class OwnerFileReader {
                 "no modules found for $id"
             }
             modules.map { it to team }
-        }.toMap()
+        }.toMap().let { Owners(ownerMap = it) }
     }
 }

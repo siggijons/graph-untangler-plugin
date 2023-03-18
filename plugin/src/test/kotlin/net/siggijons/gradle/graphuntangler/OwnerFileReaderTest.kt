@@ -18,7 +18,7 @@ internal class OwnerFileReaderTest {
     }
 
     @Test
-    fun `read - given valid owners file, should return map`() {
+    fun `read - given valid owners file, should return owners with map`() {
         val contents = """
             foo:
               team: foo-team
@@ -31,14 +31,14 @@ internal class OwnerFileReaderTest {
               modules: []
         """.trimIndent()
 
-        val ownerMap = ownerFileReader.read(contents)
+        val owners = ownerFileReader.read(contents)
 
         assertEquals(
             mapOf(
                 "module-one" to "foo-team",
                 "module-two" to "foo-team",
                 "bar-module" to "bar-team",
-            ), ownerMap
+            ), owners.ownerMap
         )
     }
 }

@@ -66,12 +66,12 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         // Inputs
         val dependencyPairs = project.rootProject
             .dependencyPairs(configurationsToAnalyze.get())
-        val owners = readOwnersIntoMap()
+        val owners = readOwners()
         val frequencyMap = readFrequencyMap()
 
         // Convert Projects to a Graph
         val graph = dependencyPairs.toJGraphTGraph(
-            ownerMap = owners,
+            owners = owners,
             frequencyMap = frequencyMap
         )
 
@@ -101,8 +101,8 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     }
 
     // TODO: verify functionality without owners file and use extension properly
-    private fun readOwnersIntoMap(): Map<String, String> {
-        val file = ownersFile.orNull ?: return emptyMap()
+    private fun readOwners(): Owners {
+        val file = ownersFile.orNull ?: return Owners(ownerMap = emptyMap())
         return OwnerFileReader().read(file.asFile)
     }
 
@@ -337,7 +337,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
      * Create a DirectedGraph from all dependency pairs in a project
      */
     private fun List<Triple<Project, Project, String>>.toJGraphTGraph(
-        ownerMap: Map<String, String>,
+        owners: Owners,
         frequencyMap: Map<String, Int>
     ): DirectedAcyclicGraph<DependencyNode, DependencyEdge> {
         val g = DirectedAcyclicGraph<DependencyNode, DependencyEdge>(DependencyEdge::class.java)
@@ -349,12 +349,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
             .associateWith { project ->
                 DependencyNode(
                     project = project.path,
-                    // TODO: create better abstractions.
-                    // TODO: assumes matching on first
-                    // TODO: assumes GitHub's @Org/Team name and that dropping org is desired
-                    owner = ownerMap.entries.firstOrNull {
-                        project.path.startsWith(it.key)
-                    }?.value?.split("/")?.lastOrNull(),
+                    owner = owners.findOwner(project.path),
                     changeRate = frequencyMap[project.path],
                     normalizedChangeRate = frequencyMap[project.path]?.let { rate ->
                         rate / maxChangeRate
