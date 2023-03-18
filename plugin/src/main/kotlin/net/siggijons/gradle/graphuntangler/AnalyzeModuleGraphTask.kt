@@ -64,18 +64,20 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     @TaskAction
     fun run() {
         // Inputs
+        logger.quiet("Analyzing Module Graph")
         val dependencyPairs = project.rootProject
             .dependencyPairs(configurationsToAnalyze.get())
         val owners = readOwners()
         val frequencyMap = readFrequencyMap()
 
-        // Convert Projects to a Graph
+        logger.quiet("Creating Graph")
         val graph = dependencyPairs.toJGraphTGraph(
             owners = owners,
             frequencyMap = frequencyMap
         )
 
         // Calculate Statistics
+        logger.quiet("Calculating Statistics")
         val graphUntangler = GraphUntangler()
         val nodeStatistics = graphUntangler.nodeStatistics(graph)
         val reducedGraph = graphUntangler.safeReduce(graph)
@@ -88,8 +90,13 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         projectsDir.deleteRecursively()
         projectsDir.mkdirs()
 
+        val statisticsOutput = output.get().asFile
+        statisticsOutput.delete()
+
         // Write Stats
-        writeStatistics(nodeStatistics)
+        logger.quiet("Writing reports")
+        logger.quiet("Statistics $statisticsOutput")
+        writeStatistics(nodeStatistics, statisticsOutput)
 
         writeDotGraph(graph, outputDot.get().asFile)
         writeDotGraph(heightGraph, outputDotHeight.get().asFile)
@@ -211,10 +218,9 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     }
 
     private fun writeStatistics(
-        graphStatistics: GraphStatistics
+        graphStatistics: GraphStatistics,
+        file: File
     ) {
-        val file = output.get().asFile
-        file.delete()
         table {
             cellStyle {
                 paddingLeft = 1
