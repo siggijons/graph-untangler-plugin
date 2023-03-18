@@ -6,22 +6,22 @@ import kotlin.math.roundToInt
 
 
 val PALLETTE = arrayOf(
-    "#f44336", // Red
-    "#e81e63", // Pink
-    "#9c27b0", // Purple
-    "#673ab7", // Deep Purple
-    "#3f51b5", // Indigo
-    "#2196f3", // Blue
-    "#03a9f4", // Light Blue
-    "#00bcd4", // Cyan
-    "#009688", // Teal
-    "#4caf50", // Green
-    "#8bc34a", // Light Green
-    "#cddc39", // Lime
-    "#ffeb3b", // Yellow
-    "#ffc107", // Amber
-    "#ff9800", // Orange
-    "#ff5722", // Deep Orange
+    "#e81e63CC", // Pink
+    "#9c27b0CC", // Purple
+    "#3f51b5CC", // Indigo
+    "#2196f3CC", // Blue
+    "#03a9f4CC", // Light Blue
+    "#00bcd4CC", // Cyan
+    "#009688CC", // Teal
+    "#4caf50CC", // Green
+    "#8bc34aCC", // Light Green
+    "#cddc39CC", // Lime
+    "#ffeb3bCC", // Yellow
+    "#ffc107CC", // Amber
+    "#ff9800CC", // Orange
+    "#ff5722CC", // Deep Orange
+    "#f44336CC", // Red
+    "#673ab7CC", // Deep Purple
 )
 
 val GRAY = "#9e9e9e"
