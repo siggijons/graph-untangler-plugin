@@ -7,6 +7,7 @@ import net.siggijons.gradle.graphuntangler.model.DependencyNode
 import net.siggijons.gradle.graphuntangler.model.GraphUntangler
 import net.siggijons.gradle.graphuntangler.model.IsolatedSubgraphDetails
 import net.siggijons.gradle.graphuntangler.model.SubgraphDetails
+import net.siggijons.gradle.graphuntangler.writer.GraphvizWriter
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.artifacts.ProjectDependency
@@ -19,10 +20,7 @@ import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
-import org.jgrapht.graph.AbstractGraph
 import org.jgrapht.graph.DirectedAcyclicGraph
-import org.jgrapht.nio.DefaultAttribute
-import org.jgrapht.nio.dot.DOTExporter
 import org.jgrapht.nio.matrix.MatrixExporter
 import java.io.File
 
@@ -61,6 +59,8 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
 
     @get:OutputDirectory
     abstract val outputProjectSubgraphs: DirectoryProperty
+
+    private val graphvizWriter = GraphvizWriter()
 
     @TaskAction
     fun run() {
@@ -104,9 +104,9 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         writeStatistics(nodeStatistics, statisticsOutput)
         writeStatisticsCsv(nodeStatistics, statisticsCsvOutput)
 
-        writeDotGraph(graph, outputDot.get().asFile)
-        writeDotGraph(heightGraph, outputDotHeight.get().asFile)
-        writeDotGraph(reducedGraph, outputDotReduced.get().asFile)
+        graphvizWriter.writeDotGraph(graph, outputDot.get().asFile)
+        graphvizWriter.writeDotGraph(heightGraph, outputDotHeight.get().asFile)
+        graphvizWriter.writeDotGraph(reducedGraph, outputDotReduced.get().asFile)
 
         writeCoOccurrenceMatrix(graph, outputAdjacencyMatrix.get().asFile)
         writeProjectSubgraphs(subgraphs, projectsDir)
@@ -124,12 +124,12 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     ) {
         graphs.forEach { subgraph ->
             with(subgraph) {
-                writeDotGraph(
+                graphvizWriter.writeDotGraph(
                     subgraph.subgraph,
                     File(outputDir, "${vertex.safeFileName}.gv")
                 )
 
-                writeDotGraph(
+                graphvizWriter.writeDotGraph(
                     subgraphHeightGraph,
                     File(outputDir, "${vertex.safeFileName}-height.gv")
                 )
@@ -186,13 +186,13 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         outputDir: File
     ) {
         graphs.forEach { details ->
-            writeDotGraph(
+            graphvizWriter.writeDotGraph(
                 graph = details.isolatedDag,
                 file = File(outputDir, "${details.vertex.safeFileName}-isolated.gv"),
                 colorMode = ColorMode.OWNER
             )
 
-            writeDotGraph(
+            graphvizWriter.writeDotGraph(
                 graph = details.reducedDag,
                 file = File(outputDir, "${details.vertex.safeFileName}-isolated-reduced.gv"),
                 colorMode = ColorMode.OWNER
@@ -313,56 +313,9 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                 it.ownershipInfo?.uniqueNonSelfOwnedDescendants,
                 it.ownershipInfo?.nonSelfOwnedAncestors,
                 it.ownershipInfo?.uniqueNonSelfOwnedAncestors
-            ).map { v -> v.toString() }.joinToString(",")
-                .let { line -> file.appendText(line + "\n") }
+            ).joinToString(",").let { line -> file.appendText(line + "\n") }
         }
     }
-
-    private fun writeDotGraph(
-        graph: AbstractGraph<DependencyNode, DependencyEdge>,
-        file: File,
-        colorMode: ColorMode = ColorMode.CHANGE_RATE
-    ) {
-        val exporter = DOTExporter<DependencyNode, DependencyEdge> { vertex ->
-            vertex.project.replace("-", "_").replace(".", "_").replace(":", "_")
-        }
-
-        val colorMap = if (colorMode == ColorMode.OWNER) {
-            val owners = graph.vertexSet()
-                .groupingBy { it.owner.orEmpty() }
-                .eachCount()
-                .toList()
-                .sortedByDescending { it.second }
-                .map { it.first }
-            seriesColors(owners)
-        } else {
-            emptyMap()
-        }
-
-        exporter.setVertexAttributeProvider { v ->
-            val color = when (colorMode) {
-                ColorMode.CHANGE_RATE -> v.normalizedChangeRate?.rateColor()
-                ColorMode.OWNER -> colorMap[v.owner]
-            }
-
-            var label = v.changeRate?.let {
-                "%s | %d".format(v.project, it)
-            } ?: v.project
-            if (v.owner != null) {
-                label += "\n${v.owner}"
-            }
-
-            mapOf(
-                "label" to DefaultAttribute.createAttribute(label),
-                "style" to DefaultAttribute.createAttribute("filled"),
-                "fillcolor" to DefaultAttribute.createAttribute(color)
-            )
-        }
-
-        file.delete()
-        exporter.exportGraph(graph, file)
-    }
-
 
     /**
      * Create a list of all dependency pairs for the matching configurations
