@@ -110,6 +110,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
 
         writeCoOccurrenceMatrix(graph, outputAdjacencyMatrix.get().asFile)
         writeProjectSubgraphs(subgraphs, projectsDir)
+        writeProjectSubgraphsDependantsCount(subgraphs, projectsDir)
         writeIsolatedSubgraphs(isolatedSubgraphs, projectsDir)
     }
 
@@ -133,12 +134,20 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                     subgraphHeightGraph,
                     File(outputDir, "${vertex.safeFileName}-height.gv")
                 )
-                writeDescendantsCounts(
-                    vertex = vertex,
-                    descendants = descendants,
-                    outputDir = outputDir
-                )
             }
+        }
+    }
+
+    private fun writeProjectSubgraphsDependantsCount(
+        graphs: List<SubgraphDetails>,
+        outputDir: File
+    ) {
+        graphs.forEach { subgraph ->
+            writeDescendantsCounts(
+                vertex = subgraph.vertex,
+                descendants = subgraph.descendants,
+                outputDir = outputDir
+            )
         }
     }
 
