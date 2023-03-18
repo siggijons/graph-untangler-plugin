@@ -15,11 +15,10 @@ import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 import org.jgrapht.alg.TransitiveReduction
 import org.jgrapht.alg.scoring.BetweennessCentrality
-import org.jgrapht.alg.shortestpath.FloydWarshallShortestPaths
-import org.jgrapht.graph.DefaultDirectedGraph
+import org.jgrapht.graph.DirectedAcyclicGraph
 import org.jgrapht.nio.DefaultAttribute
 import org.jgrapht.nio.dot.DOTExporter
-import org.jgrapht.traverse.BreadthFirstIterator
+import org.jgrapht.traverse.TopologicalOrderIterator
 
 abstract class AnalyzeModuleGraphTask : DefaultTask() {
 
@@ -37,7 +36,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     abstract val outputDot: RegularFileProperty
 
     @get:OutputFile
-    abstract val outputDotDepth: RegularFileProperty
+    abstract val outputDotHeight: RegularFileProperty
 
     @get:OutputFile
     abstract val outputDotReduced: RegularFileProperty
@@ -49,11 +48,11 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
             .toJGraphTGraph()
 
         val nodeStatistics = graph.nodeStatistics()
-        val depthGraph = depthGraph(graph, nodeStatistics.nodes)
+        val heightGraph = heightGraph(graph, nodeStatistics.nodes)
 
         writeStatistics(nodeStatistics)
         writeDotGraph(graph, outputDot.get())
-        writeDotGraph(depthGraph, outputDotDepth.get())
+        writeDotGraph(heightGraph, outputDotHeight.get())
 
         TransitiveReduction.INSTANCE.reduce(graph)
         writeDotGraph(graph, outputDotReduced.get())
@@ -76,8 +75,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                     "degree",
                     "inDegree",
                     "outDegree",
-                    "depth",
-                    "eccentricity"
+                    "height"
                 )
             }
             graphStatistics.nodes.forEach {
@@ -87,8 +85,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                     it.degree,
                     it.inDegree,
                     it.outDegree,
-                    it.depth,
-                    it.eccentricity
+                    it.height
                 )
             }
         }.renderText().also {
@@ -98,7 +95,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     }
 
     private fun writeDotGraph(
-        graph: DefaultDirectedGraph<String, DependencyEdge>,
+        graph: DirectedAcyclicGraph<String, DependencyEdge>,
         regularFile: RegularFile
     ) {
         val exporter = DOTExporter<String, DependencyEdge> { vertex ->
@@ -121,7 +118,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
      * all vertices with 0 in degree as the roots. This is untested for graphs with multiple roots
      * but it could work.
      */
-    private fun DefaultDirectedGraph<String, DependencyEdge>.nodeStatistics(): GraphStatistics {
+    private fun DirectedAcyclicGraph<String, DependencyEdge>.nodeStatistics(): GraphStatistics {
         val betweennessCentrality = BetweennessCentrality(this).scores
         val roots = vertexSet().filter {
             inDegreeOf(it) == 0
@@ -141,29 +138,23 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
             )
         }
 
-        val measures = measure()
+        val heights = heights()
 
-        logger.warn("$measures")
-
-        val nodes = roots.first().let { root ->
-            val iterator = BreadthFirstIterator(this, root)
-            val stats = mutableListOf<NodeStatistics>()
-            while (iterator.hasNext()) {
-                val node = iterator.next()
-                val s = NodeStatistics(
-                    node = node,
-                    betweennessCentrality = requireNotNull(betweennessCentrality[node]) {
-                        "betweennessCentrality not found for $node"
-                    },
-                    degree = degreeOf(node),
-                    inDegree = inDegreeOf(node),
-                    outDegree = outDegreeOf(node),
-                    depth = iterator.getDepth(node),
-                    eccentricity = measures.eccentricityMap[node] ?: -1.0
-                )
-                stats.add(s)
-            }
-            stats
+        val iterator = TopologicalOrderIterator(this)
+        val nodes = mutableListOf<NodeStatistics>()
+        while (iterator.hasNext()) {
+            val node = iterator.next()
+            val s = NodeStatistics(
+                node = node,
+                betweennessCentrality = requireNotNull(betweennessCentrality[node]) {
+                    "betweennessCentrality not found for $node"
+                },
+                degree = degreeOf(node),
+                inDegree = inDegreeOf(node),
+                outDegree = outDegreeOf(node),
+                height = heights.heightMap[node] ?: -1
+            )
+            nodes.add(s)
         }
 
         return GraphStatistics(
@@ -171,37 +162,55 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         )
     }
 
-    private fun DefaultDirectedGraph<String, DependencyEdge>.measure(): Measures<String> {
-        val algorithm = FloydWarshallShortestPaths(this)
-        val eccentricityMap = vertexSet().associateWith { u ->
-            vertexSet().maxOf { v ->
-                val pathWeight = algorithm.getPathWeight(u, v)
-                if (pathWeight != Double.POSITIVE_INFINITY) pathWeight
-                else 0.0
+    class HeightMeasurer<V, E>(
+        private val graph: DirectedAcyclicGraph<V, E>
+    ) {
+
+        private val heightMap = LinkedHashMap<V, Int>()
+
+        fun calculateHeightMap(): Map<V, Int> {
+            graph.vertexSet().forEach { v ->
+                heightOf(v)
             }
+            return heightMap.toMap()
         }
-        val diameter = vertexSet().maxOf { eccentricityMap[it] ?: 0.0 }
-        return Measures(
-            diameter = diameter,
-            eccentricityMap = eccentricityMap
-        )
+
+        private fun heightOf(v: V): Int {
+            val cached = heightMap[v]
+            if (cached != null) {
+                return cached
+            }
+
+            val descendants = graph.getDescendants(v)
+            val height = if (descendants.isEmpty()) {
+                0
+            } else {
+                descendants.maxOf { heightOf(it) } + 1
+            }
+            heightMap[v] = height
+            return height
+        }
     }
 
-    data class Measures<V>(
-        val diameter: Double,
-        val eccentricityMap: Map<V, Double>
+    private fun DirectedAcyclicGraph<String, DependencyEdge>.heights(): Heights<String> {
+        val map = HeightMeasurer(graph = this).calculateHeightMap()
+        return Heights(map)
+    }
+
+    data class Heights<V>(
+        val heightMap: Map<V, Int>
     )
 
-    private fun depthGraph(
-        graph: DefaultDirectedGraph<String, DependencyEdge>,
+    private fun heightGraph(
+        graph: DirectedAcyclicGraph<String, DependencyEdge>,
         nodes: List<NodeStatistics>
-    ): DefaultDirectedGraph<String, DependencyEdge> {
-        val g = DefaultDirectedGraph<String, DependencyEdge>(DependencyEdge::class.java)
+    ): DirectedAcyclicGraph<String, DependencyEdge> {
+        val g = DirectedAcyclicGraph<String, DependencyEdge>(DependencyEdge::class.java)
         nodes.forEach { g.addVertex(it.node) }
 
-        val byDepth = nodes.groupBy { it.depth }
-        byDepth.forEach { (height, currentLevel) ->
-            val nextLevel = byDepth.getOrDefault(height + 1, emptyList())
+        val byHeight = nodes.groupBy { it.height }
+        byHeight.forEach { (height, currentLevel) ->
+            val nextLevel = byHeight.getOrDefault(height - 1, emptyList())
             currentLevel.forEach { current ->
                 val connected = nextLevel.filter { next ->
                     graph.containsEdge(current.node, next.node)
@@ -236,8 +245,8 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     /**
      * Create a DirectedGraph from all dependency pairs in a project
      */
-    private fun List<Triple<Project, Project, String>>.toJGraphTGraph(): DefaultDirectedGraph<String, DependencyEdge> {
-        val g = DefaultDirectedGraph<String, DependencyEdge>(DependencyEdge::class.java)
+    private fun List<Triple<Project, Project, String>>.toJGraphTGraph(): DirectedAcyclicGraph<String, DependencyEdge> {
+        val g = DirectedAcyclicGraph<String, DependencyEdge>(DependencyEdge::class.java)
         forEach { (a, b, label) ->
             g.addVertex(a.name)
             g.addVertex(b.name)

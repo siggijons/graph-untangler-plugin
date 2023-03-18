@@ -21,8 +21,8 @@ class GraphUntanglerPlugin : Plugin<Project> {
             buildDirectory.file("untangler/analyzeModuleGraph.txt")
         val analyzeModuleGraphDot =
             buildDirectory.file("untangler/analyzeModuleGraph.dot")
-        val analyzeModuleGraphDotDepth =
-            buildDirectory.file("untangler/analyzeModuleGraph-depth.dot")
+        val analyzeModuleGraphDotHeight =
+            buildDirectory.file("untangler/analyzeModuleGraph-height.dot")
         val analyzeModuleGraphDotReduced =
             buildDirectory.file("untangler/analyzeModuleGraph-reduced.dot")
 
@@ -31,7 +31,7 @@ class GraphUntanglerPlugin : Plugin<Project> {
             task.rootNode.set(extension.rootNode)
             task.output.set(analyzeModuleGraph)
             task.outputDot.set(analyzeModuleGraphDot)
-            task.outputDotDepth.set(analyzeModuleGraphDotDepth)
+            task.outputDotHeight.set(analyzeModuleGraphDotHeight)
             task.outputDotReduced.set(analyzeModuleGraphDotReduced)
         }
     }
