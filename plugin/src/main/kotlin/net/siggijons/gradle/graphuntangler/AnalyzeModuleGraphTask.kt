@@ -39,39 +39,47 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         writeDotGraph(graph)
     }
 
-    private fun writeStatistics(nodeStatistics: List<NodeStatistics>) {
-        table {
-            cellStyle {
-                paddingLeft = 1
-                paddingRight = 1
-            }
-            header {
-                row(
-                    "node",
-                    "betweennessCentrality",
-                    "degree",
-                    "inDegree",
-                    "outDegree",
-                    "height"
-                )
-            }
-            nodeStatistics.forEach {
-                row(
-                    it.node,
-                    "%.2f".format(it.betweennessCentrality),
-                    it.degree,
-                    it.inDegree,
-                    it.outDegree,
-                    it.height
-                )
+    private fun writeStatistics(
+        nodeStatistics: List<Pair<String, List<NodeStatistics>>>
+    ) {
+        val file = output.get().asFile
+        file.delete()
+        nodeStatistics.forEach { (root, stats) ->
+            table {
+                cellStyle {
+                    paddingLeft = 1
+                    paddingRight = 1
+                }
+                header {
+                    row {
+                        cell("Root: $root") {
+                            columnSpan = 6
+                        }
+                    }
+                    row(
+                        "node",
+                        "betweennessCentrality",
+                        "degree",
+                        "inDegree",
+                        "outDegree",
+                        "height"
+                    )
+                }
+                stats.forEach {
+                    row(
+                        it.node,
+                        "%.2f".format(it.betweennessCentrality),
+                        it.degree,
+                        it.inDegree,
+                        it.outDegree,
+                        it.height
+                    )
+                }
+            }.renderText().also {
+                file.appendText(it)
+                file.appendText("\n\n")
             }
         }
-            .renderText()
-            .also {
-                val file = output.get().asFile
-                file.delete()
-                file.writeText(it)
-            }
     }
 
     private fun writeDotGraph(graph: DefaultDirectedGraph<String, DependencyEdge>) {
@@ -100,28 +108,31 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
      * all vertices with 0 in degree as the roots. This is untested for graphs with multiple roots
      * but it could work.
      */
-    private fun DefaultDirectedGraph<String, DependencyEdge>.nodeStatistics(): List<NodeStatistics> {
+    private fun DefaultDirectedGraph<String, DependencyEdge>.nodeStatistics(): List<Pair<String, List<NodeStatistics>>> {
         val betweennessCentrality = BetweennessCentrality(this).scores
-        val root = vertexSet().first {
+        val roots = vertexSet().filter {
             inDegreeOf(it) == 0
         }
-        val iterator = BreadthFirstIterator(this, root)
-        val stats = mutableListOf<NodeStatistics>()
-        while (iterator.hasNext()) {
-            val node = iterator.next()
-            val s = NodeStatistics(
-                node = node,
-                betweennessCentrality = requireNotNull(betweennessCentrality[node]) {
-                    "betweennessCentrality not found for $node"
-                },
-                degree = degreeOf(node),
-                inDegree = inDegreeOf(node),
-                outDegree = outDegreeOf(node),
-                height = iterator.getDepth(node)
-            )
-            stats.add(s)
+
+        return roots.map { root ->
+            val iterator = BreadthFirstIterator(this, root)
+            val stats = mutableListOf<NodeStatistics>()
+            while (iterator.hasNext()) {
+                val node = iterator.next()
+                val s = NodeStatistics(
+                    node = node,
+                    betweennessCentrality = requireNotNull(betweennessCentrality[node]) {
+                        "betweennessCentrality not found for $node"
+                    },
+                    degree = degreeOf(node),
+                    inDegree = inDegreeOf(node),
+                    outDegree = outDegreeOf(node),
+                    height = iterator.getDepth(node)
+                )
+                stats.add(s)
+            }
+            root to stats
         }
-        return stats
     }
 
     /**
