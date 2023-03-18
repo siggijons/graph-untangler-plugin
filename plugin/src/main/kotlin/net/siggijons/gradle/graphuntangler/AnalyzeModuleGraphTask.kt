@@ -50,7 +50,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
             .toJGraphTGraph()
 
         val nodeStatistics = graph.nodeStatistics()
-        val heightGraph = heightGraph(graph, nodeStatistics.nodes)
+        val heightGraph = heightGraph2(graph, nodeStatistics.nodes)
 
         writeStatistics(nodeStatistics)
         writeDotGraph(graph, outputDot.get())
@@ -200,6 +200,43 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                 }
                 connected.forEach {
                     g.addEdge(current.node, it.node, DependencyEdge(label = "critical"))
+                }
+            }
+        }
+        return g
+    }
+
+    private fun heightGraph2(
+        graph: DirectedAcyclicGraph<String, DependencyEdge>,
+        nodes: List<NodeStatistics>
+    ): DirectedAcyclicGraph<String, DependencyEdge> {
+        val g = DirectedAcyclicGraph<String, DependencyEdge>(DependencyEdge::class.java)
+
+        val added = mutableSetOf<String>()
+        val byHeight = nodes.sortedByDescending { it.height }.groupBy { it.height }
+        byHeight.forEach { (height, currentLevel) ->
+            logger.warn("Processing $height with ${currentLevel.size} nodes")
+
+            if (added.isEmpty()) {
+                logger.warn("Nothing added yet. adding $currentLevel")
+                currentLevel.forEach {
+                    g.addVertex(it.node)
+                    added.add(it.node)
+                }
+            } else {
+                val connectionsToPrevious = currentLevel.map { v ->
+                    v.node to added.filter { u -> graph.containsEdge(u, v.node) }
+                }.filter { it.second.isNotEmpty() }
+
+                logger.warn("Found connections to previous $connectionsToPrevious")
+
+                added.clear()
+                connectionsToPrevious.forEach { (u, vs) ->
+                    vs.forEach {
+                        g.addVertex(u)
+                        g.addEdge(it, u, DependencyEdge(label = "Height Neighbor"))
+                        added.add(u)
+                    }
                 }
             }
         }
