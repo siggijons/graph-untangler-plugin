@@ -2,7 +2,7 @@ package net.siggijons.gradle.graphuntangler.writer
 
 import com.jakewharton.picnic.renderText
 import com.jakewharton.picnic.table
-import net.siggijons.gradle.graphuntangler.GraphStatistics
+import net.siggijons.gradle.graphuntangler.graph.GraphStatistics
 import java.io.File
 
 class PicnicStatisticsWriter(

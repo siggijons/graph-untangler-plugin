@@ -1,6 +1,4 @@
-package net.siggijons.gradle.graphuntangler
-
-import net.siggijons.gradle.graphuntangler.model.DependencyNode
+package net.siggijons.gradle.graphuntangler.graph
 
 data class NodeStatistics(
     val node: DependencyNode,
@@ -33,7 +31,3 @@ data class NodeStatistics(
         val uniqueNonSelfOwnedAncestors: Int
     )
 }
-
-data class GraphStatistics(
-    val nodes: List<NodeStatistics>
-)

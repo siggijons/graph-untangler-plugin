@@ -1,6 +1,6 @@
 package net.siggijons.gradle.graphuntangler.writer
 
-import net.siggijons.gradle.graphuntangler.GraphStatistics
+import net.siggijons.gradle.graphuntangler.graph.GraphStatistics
 import java.io.File
 
 class CSVStatisticsWriter(

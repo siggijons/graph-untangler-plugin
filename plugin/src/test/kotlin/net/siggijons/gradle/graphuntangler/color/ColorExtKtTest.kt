@@ -1,4 +1,4 @@
-package net.siggijons.gradle.graphuntangler
+package net.siggijons.gradle.graphuntangler.color
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -15,8 +15,8 @@ internal class ColorExtKtTest {
 
         // Then
         assertEquals(6, colors.size)
-        assertEquals(colors[0], PALLETTE[0])
-        assertEquals(colors[5], PALLETTE[5])
+        assertEquals(colors[0], PALETTE[0])
+        assertEquals(colors[5], PALETTE[5])
     }
 
     @Test
@@ -29,8 +29,8 @@ internal class ColorExtKtTest {
 
         // Then
         assertEquals(21, colors.size)
-        assertEquals(PALLETTE[0], colors[0])
-        assertEquals(PALLETTE[15], colors[15])
+        assertEquals(PALETTE[0], colors[0])
+        assertEquals(PALETTE[15], colors[15])
         assertEquals(GRAY, colors[16])
         assertEquals(GRAY, colors[17])
         assertEquals(GRAY, colors[18])

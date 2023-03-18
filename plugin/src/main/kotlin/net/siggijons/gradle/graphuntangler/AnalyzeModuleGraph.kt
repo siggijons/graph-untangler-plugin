@@ -1,8 +1,8 @@
 package net.siggijons.gradle.graphuntangler
 
-import net.siggijons.gradle.graphuntangler.model.DependencyEdge
-import net.siggijons.gradle.graphuntangler.model.DependencyNode
-import net.siggijons.gradle.graphuntangler.model.GraphUntangler
+import net.siggijons.gradle.graphuntangler.graph.DependencyEdge
+import net.siggijons.gradle.graphuntangler.graph.DependencyNode
+import net.siggijons.gradle.graphuntangler.graph.GraphUntangler
 import net.siggijons.gradle.graphuntangler.writer.CSVStatisticsWriter
 import net.siggijons.gradle.graphuntangler.writer.CoOccurrenceMatrixWriter
 import net.siggijons.gradle.graphuntangler.writer.GraphvizWriter

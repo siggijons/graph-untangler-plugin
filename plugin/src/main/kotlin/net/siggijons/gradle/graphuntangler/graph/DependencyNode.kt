@@ -1,4 +1,4 @@
-package net.siggijons.gradle.graphuntangler.model
+package net.siggijons.gradle.graphuntangler.graph
 
 data class DependencyNode(
     val project: String,

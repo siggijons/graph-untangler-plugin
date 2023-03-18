@@ -1,4 +1,4 @@
-package net.siggijons.gradle.graphuntangler
+package net.siggijons.gradle.graphuntangler.owner
 
 import org.junit.Assert.assertEquals
 import org.junit.Test

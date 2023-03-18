@@ -1,7 +1,5 @@
-package net.siggijons.gradle.graphuntangler.model
+package net.siggijons.gradle.graphuntangler.graph
 
-import net.siggijons.gradle.graphuntangler.GraphStatistics
-import net.siggijons.gradle.graphuntangler.NodeStatistics
 import org.jgrapht.GraphMetrics
 import org.jgrapht.alg.TransitiveReduction
 import org.jgrapht.alg.scoring.BetweennessCentrality

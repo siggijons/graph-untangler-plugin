@@ -1,10 +1,10 @@
 package net.siggijons.gradle.graphuntangler.writer
 
-import net.siggijons.gradle.graphuntangler.ColorMode
-import net.siggijons.gradle.graphuntangler.model.DependencyEdge
-import net.siggijons.gradle.graphuntangler.model.DependencyNode
-import net.siggijons.gradle.graphuntangler.rateColor
-import net.siggijons.gradle.graphuntangler.seriesColors
+import net.siggijons.gradle.graphuntangler.color.ColorMode
+import net.siggijons.gradle.graphuntangler.color.rateColor
+import net.siggijons.gradle.graphuntangler.color.seriesColors
+import net.siggijons.gradle.graphuntangler.graph.DependencyEdge
+import net.siggijons.gradle.graphuntangler.graph.DependencyNode
 import org.jgrapht.graph.AbstractGraph
 import org.jgrapht.nio.DefaultAttribute
 import org.jgrapht.nio.dot.DOTExporter

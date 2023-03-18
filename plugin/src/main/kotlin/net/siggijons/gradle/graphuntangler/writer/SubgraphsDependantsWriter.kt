@@ -1,7 +1,7 @@
 package net.siggijons.gradle.graphuntangler.writer
 
-import net.siggijons.gradle.graphuntangler.model.DependencyNode
-import net.siggijons.gradle.graphuntangler.model.SubgraphDetails
+import net.siggijons.gradle.graphuntangler.graph.DependencyNode
+import net.siggijons.gradle.graphuntangler.graph.SubgraphDetails
 import java.io.File
 
 class SubgraphsDependantsWriter(

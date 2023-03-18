@@ -1,11 +1,10 @@
-package net.siggijons.gradle.graphuntangler
+package net.siggijons.gradle.graphuntangler.color
 
 import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.roundToInt
 
-
-val PALLETTE = arrayOf(
+val PALETTE = arrayOf(
     "#e81e63CC", // Pink
     "#9c27b0CC", // Purple
     "#3f51b5CC", // Indigo
@@ -38,7 +37,7 @@ fun Double?.rateColor(): String {
 }
 
 fun <T : Any> seriesColors(list: List<T>): Map<T, String> {
-    val fillSize = max(0, list.size - PALLETTE.size)
+    val fillSize = max(0, list.size - PALETTE.size)
     val fillList = List(fillSize) { GRAY }
-    return list.zip(PALLETTE + fillList).toMap()
+    return list.zip(PALETTE + fillList).toMap()
 }

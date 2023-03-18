@@ -1,8 +1,8 @@
 package net.siggijons.gradle.graphuntangler.writer
 
-import net.siggijons.gradle.graphuntangler.ColorMode
-import net.siggijons.gradle.graphuntangler.model.IsolatedSubgraphDetails
-import net.siggijons.gradle.graphuntangler.model.SubgraphDetails
+import net.siggijons.gradle.graphuntangler.color.ColorMode
+import net.siggijons.gradle.graphuntangler.graph.IsolatedSubgraphDetails
+import net.siggijons.gradle.graphuntangler.graph.SubgraphDetails
 import java.io.File
 
 class SubgraphWriter(

@@ -1,6 +1,6 @@
 package net.siggijons.gradle.graphuntangler.writer
 
-import net.siggijons.gradle.graphuntangler.model.IsolatedSubgraphDetails
+import net.siggijons.gradle.graphuntangler.graph.IsolatedSubgraphDetails
 import java.io.File
 
 class SubgraphSizeWriter(

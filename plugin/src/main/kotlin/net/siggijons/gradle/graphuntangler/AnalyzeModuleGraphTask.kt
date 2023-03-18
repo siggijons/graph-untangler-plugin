@@ -1,7 +1,9 @@
 package net.siggijons.gradle.graphuntangler
 
-import net.siggijons.gradle.graphuntangler.model.DependencyEdge
-import net.siggijons.gradle.graphuntangler.model.DependencyNode
+import net.siggijons.gradle.graphuntangler.graph.DependencyEdge
+import net.siggijons.gradle.graphuntangler.graph.DependencyNode
+import net.siggijons.gradle.graphuntangler.owner.OwnerFileReader
+import net.siggijons.gradle.graphuntangler.owner.Owners
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.artifacts.ProjectDependency

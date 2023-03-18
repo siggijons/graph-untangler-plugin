@@ -1,4 +1,4 @@
-package net.siggijons.gradle.graphuntangler
+package net.siggijons.gradle.graphuntangler.owner
 
 class Owners(
     val ownerMap: Map<String, String>,

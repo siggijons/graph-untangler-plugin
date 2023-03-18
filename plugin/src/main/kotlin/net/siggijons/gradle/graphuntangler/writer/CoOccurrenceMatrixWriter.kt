@@ -1,7 +1,7 @@
 package net.siggijons.gradle.graphuntangler.writer
 
-import net.siggijons.gradle.graphuntangler.model.DependencyEdge
-import net.siggijons.gradle.graphuntangler.model.DependencyNode
+import net.siggijons.gradle.graphuntangler.graph.DependencyEdge
+import net.siggijons.gradle.graphuntangler.graph.DependencyNode
 import org.jgrapht.graph.DirectedAcyclicGraph
 import org.jgrapht.nio.matrix.MatrixExporter
 import java.io.File
