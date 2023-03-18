@@ -2,6 +2,7 @@ package net.siggijons.gradle.graphuntangler
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import java.io.File
 
 /**
  * @suppress unused used as a plugin
@@ -35,6 +36,7 @@ class GraphUntanglerPlugin : Plugin<Project> {
         project.tasks.register("analyzeModuleGraph", AnalyzeModuleGraphTask::class.java) { task ->
             task.configurationsToAnalyze.set(extension.configurationsToAnalyze)
             task.rootNode.set(extension.rootNode)
+            task.ownersFile.set(project.rootProject.layout.projectDirectory.file("owners.yaml"))
             task.changeFrequencyFile.set(changeFrequencyFile)
             task.output.set(analyzeModuleGraph)
             task.outputDot.set(analyzeModuleGraphDot)

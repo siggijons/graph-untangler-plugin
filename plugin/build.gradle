@@ -15,6 +15,7 @@ dependencies {
   implementation "org.jgrapht:jgrapht-core:1.5.1"
   implementation 'org.jgrapht:jgrapht-io:1.5.1'
   implementation 'com.jakewharton.picnic:picnic:0.6.0'
+  implementation 'org.yaml:snakeyaml:1.33'
 
   testImplementation 'junit:junit:4.13.2'
 }

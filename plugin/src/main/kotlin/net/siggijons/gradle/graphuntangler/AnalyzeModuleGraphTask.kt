@@ -32,6 +32,10 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     abstract val configurationsToAnalyze: SetProperty<String>
 
     @get:Optional
+    @get:InputFile
+    abstract val ownersFile: RegularFileProperty
+
+    @get:Optional
     @get:Input
     abstract val rootNode: Property<String?>
 
@@ -61,9 +65,11 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         val dependencyPairs = project.rootProject
             .dependencyPairs(configurationsToAnalyze.get())
 
+        val owners = readOwnersIntoMap()
+
         val frequencyMap = readFrequencyMap()
         val graph = dependencyPairs.toJGraphTGraph(
-            ownerMap = emptyMap(),
+            ownerMap = owners,
             frequencyMap = frequencyMap
         )
 
@@ -84,6 +90,11 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
 
         TransitiveReduction.INSTANCE.reduce(graph)
         writeDotGraph(graph, outputDotReduced.get().asFile)
+    }
+
+    private fun readOwnersIntoMap(): Map<String, String> {
+        val file = ownersFile?.orNull ?: return emptyMap()
+        return OwnerFileReader().read(file.asFile)
     }
 
     private fun writeProjectSubgraphs(
@@ -243,9 +254,13 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         exporter.setVertexAttributeProvider { v ->
             val color = v.normalizedChangeRate?.rateColor()
 
-            val label = v.changeRate?.let {
+            var label = v.changeRate?.let {
                 "%s | %d".format(v.project, it)
             } ?: v.project
+            if (v.owner != null) {
+                label += " | ${v.owner}"
+            }
+
             mapOf(
                 "label" to DefaultAttribute.createAttribute(label),
                 "style" to DefaultAttribute.createAttribute("filled"),

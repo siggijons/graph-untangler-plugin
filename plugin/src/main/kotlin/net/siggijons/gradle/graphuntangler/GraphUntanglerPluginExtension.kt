@@ -6,4 +6,6 @@ open class GraphUntanglerPluginExtension {
     var configurationsToAnalyze = setOf("api", "implementation")
 
     var rootNode: String? = null
+
+    var ownerFile: String? = null
 }
