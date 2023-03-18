@@ -21,7 +21,6 @@ import org.jgrapht.nio.DefaultAttribute
 import org.jgrapht.nio.dot.DOTExporter
 import org.jgrapht.nio.matrix.MatrixExporter
 import org.jgrapht.traverse.TopologicalOrderIterator
-import java.lang.Exception
 import java.lang.IllegalStateException
 
 abstract class AnalyzeModuleGraphTask : DefaultTask() {
@@ -238,11 +237,9 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
 
         val added = mutableSetOf<String>()
         val byHeight = nodes.sortedByDescending { it.height }.groupBy { it.height }
-        byHeight.forEach { (height, currentLevel) ->
-            logger.warn("Processing $height with ${currentLevel.size} nodes")
+        byHeight.forEach { (_, currentLevel) ->
 
             if (added.isEmpty()) {
-                logger.warn("Nothing added yet. adding $currentLevel")
                 currentLevel.forEach {
                     g.addVertex(it.node)
                     added.add(it.node)
@@ -251,8 +248,6 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                 val connectionsToPrevious = currentLevel.map { v ->
                     v.node to added.filter { u -> graph.containsEdge(u, v.node) }
                 }.filter { it.second.isNotEmpty() }
-
-                logger.warn("Found connections to previous $connectionsToPrevious")
 
                 added.clear()
                 connectionsToPrevious.forEach { (u, vs) ->
@@ -296,8 +291,8 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                 g.addVertex(a.path)
                 g.addVertex(b.path)
                 g.addEdge(a.path, b.path, DependencyEdge(label = label))
-            } catch (e: Exception) {
-                throw IllegalStateException("Error when adding ${a} -> ${b}", e)
+            } catch (e: IllegalArgumentException) {
+                throw IllegalStateException("Error when adding $a -> $b", e)
             }
         }
         return g
