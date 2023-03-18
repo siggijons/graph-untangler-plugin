@@ -1,13 +1,15 @@
 package net.siggijons.gradle.graphuntangler
 
-import com.jakewharton.picnic.renderText
-import com.jakewharton.picnic.table
 import net.siggijons.gradle.graphuntangler.model.DependencyEdge
 import net.siggijons.gradle.graphuntangler.model.DependencyNode
 import net.siggijons.gradle.graphuntangler.model.GraphUntangler
-import net.siggijons.gradle.graphuntangler.model.IsolatedSubgraphDetails
-import net.siggijons.gradle.graphuntangler.model.SubgraphDetails
+import net.siggijons.gradle.graphuntangler.writer.CSVStatisticsWriter
+import net.siggijons.gradle.graphuntangler.writer.CoOccurrenceMatrixWriter
 import net.siggijons.gradle.graphuntangler.writer.GraphvizWriter
+import net.siggijons.gradle.graphuntangler.writer.PicnicStatisticsWriter
+import net.siggijons.gradle.graphuntangler.writer.SubgraphSizeWriter
+import net.siggijons.gradle.graphuntangler.writer.SubgraphWriter
+import net.siggijons.gradle.graphuntangler.writer.SubgraphsDependantsWriter
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.artifacts.ProjectDependency
@@ -21,8 +23,6 @@ import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 import org.jgrapht.graph.DirectedAcyclicGraph
-import org.jgrapht.nio.matrix.MatrixExporter
-import java.io.File
 
 abstract class AnalyzeModuleGraphTask : DefaultTask() {
 
@@ -59,8 +59,6 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
 
     @get:OutputDirectory
     abstract val outputProjectSubgraphs: DirectoryProperty
-
-    private val graphvizWriter = GraphvizWriter()
 
     @TaskAction
     fun run() {
@@ -101,17 +99,19 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         // Write Stats
         logger.quiet("Writing reports")
         logger.quiet("Statistics $statisticsOutput")
-        writeStatistics(nodeStatistics, statisticsOutput)
-        writeStatisticsCsv(nodeStatistics, statisticsCsvOutput)
 
+        PicnicStatisticsWriter(statisticsOutput).write(nodeStatistics)
+        CSVStatisticsWriter(statisticsCsvOutput).write(nodeStatistics)
+
+        val graphvizWriter = GraphvizWriter()
         graphvizWriter.writeDotGraph(graph, outputDot.get().asFile)
         graphvizWriter.writeDotGraph(heightGraph, outputDotHeight.get().asFile)
         graphvizWriter.writeDotGraph(reducedGraph, outputDotReduced.get().asFile)
 
-        writeCoOccurrenceMatrix(graph, outputAdjacencyMatrix.get().asFile)
-        writeProjectSubgraphs(subgraphs, projectsDir)
-        writeProjectSubgraphsDependantsCount(subgraphs, projectsDir)
-        writeIsolatedSubgraphs(isolatedSubgraphs, projectsDir)
+        CoOccurrenceMatrixWriter(outputAdjacencyMatrix.get().asFile).write(graph)
+        SubgraphSizeWriter(outputIsolatedSubgraphSize.get().asFile).write(isolatedSubgraphs)
+        SubgraphsDependantsWriter(projectsDir).write(subgraphs)
+        SubgraphWriter(projectsDir).write(subgraphs, isolatedSubgraphs)
     }
 
     private fun readOwners(): Owners {
@@ -119,210 +119,10 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         return OwnerFileReader().read(file.asFile)
     }
 
-    private fun writeProjectSubgraphs(
-        graphs: List<SubgraphDetails>,
-        outputDir: File
-    ) {
-        graphs.forEach { subgraph ->
-            with(subgraph) {
-                graphvizWriter.writeDotGraph(
-                    subgraph.subgraph,
-                    File(outputDir, "${vertex.safeFileName}.gv")
-                )
-
-                graphvizWriter.writeDotGraph(
-                    subgraphHeightGraph,
-                    File(outputDir, "${vertex.safeFileName}-height.gv")
-                )
-            }
-        }
-    }
-
-    private fun writeProjectSubgraphsDependantsCount(
-        graphs: List<SubgraphDetails>,
-        outputDir: File
-    ) {
-        graphs.forEach { subgraph ->
-            writeDescendantsCounts(
-                vertex = subgraph.vertex,
-                descendants = subgraph.descendants,
-                outputDir = outputDir
-            )
-        }
-    }
-
-    /**
-     * Write csv files with stats about the ownership of descendants.
-     */
-    private fun writeDescendantsCounts(
-        vertex: DependencyNode,
-        descendants: Set<DependencyNode>,
-        outputDir: File
-    ) {
-        val descendantsMap = descendants.groupBy(
-            keySelector = { it.owner },
-            valueTransform = { it.project }
-        )
-
-        with(
-            File(outputDir, "${vertex.safeFileName}-descendants-owners-count.csv").printWriter()
-        ) {
-            println("owner,modules")
-            descendantsMap.forEach { (owner, projects) ->
-                println("$owner,${projects.size}")
-            }
-            flush()
-        }
-
-        with(
-            File(outputDir, "${vertex.safeFileName}-descendants-owners.csv").printWriter()
-        ) {
-            println("owner,module")
-            descendantsMap.forEach { (owner, projects) ->
-                projects.forEach {
-                    println("$owner,$it")
-                }
-            }
-            flush()
-        }
-    }
-
-    private val DependencyNode.safeFileName: String
-        get() = project.replace(":", "_")
-
-    private fun writeIsolatedSubgraphs(
-        graphs: List<IsolatedSubgraphDetails>,
-        outputDir: File
-    ) {
-        graphs.forEach { details ->
-            graphvizWriter.writeDotGraph(
-                graph = details.isolatedDag,
-                file = File(outputDir, "${details.vertex.safeFileName}-isolated.gv"),
-                colorMode = ColorMode.OWNER
-            )
-
-            graphvizWriter.writeDotGraph(
-                graph = details.reducedDag,
-                file = File(outputDir, "${details.vertex.safeFileName}-isolated-reduced.gv"),
-                colorMode = ColorMode.OWNER
-            )
-        }
-
-        with(outputIsolatedSubgraphSize.get().asFile.printWriter()) {
-            println("vertex,isolatedDagSize,fullGraphSize\n")
-            graphs.forEach {
-                println("${it.vertex.project},${it.isolatedDagSize},${it.fullGraphSize}\n")
-            }
-            flush()
-        }
-    }
-
     private fun readFrequencyMap(): Map<String, Int> {
         return changeFrequencyFile.get().asFile.readLines().drop(1).associate {
             val s = it.split(",")
             s[0] to s[1].toInt()
-        }
-    }
-
-    private fun writeCoOccurrenceMatrix(
-        graph: DirectedAcyclicGraph<DependencyNode, DependencyEdge>,
-        outputFile: File
-    ) {
-        val exporter = MatrixExporter<DependencyNode, DependencyEdge>(
-            MatrixExporter.Format.SPARSE_ADJACENCY_MATRIX
-        ) { v -> v.project }
-        exporter.exportGraph(graph, outputFile)
-    }
-
-    private fun writeStatistics(
-        graphStatistics: GraphStatistics,
-        file: File
-    ) {
-        table {
-            cellStyle {
-                paddingLeft = 1
-                paddingRight = 1
-            }
-            header {
-                row(
-                    "node",
-                    "owner",
-                    "betweennessCentrality",
-                    "degree",
-                    "inDegree",
-                    "outDegree",
-                    "height",
-                    "ancestors",
-                    "descendants",
-                    "changeRate",
-                    "descendantsChangeRate",
-                    "rebuiltTargetsByTransitiveDependencies"
-                )
-            }
-            graphStatistics.nodes.forEach {
-                row(
-                    it.node.project,
-                    it.node.owner,
-                    "%.2f".format(it.betweennessCentrality),
-                    it.degree,
-                    it.inDegree,
-                    it.outDegree,
-                    it.height,
-                    it.ancestors,
-                    it.descendants,
-                    it.changeRate,
-                    it.descendantsChangeRate,
-                    it.rebuiltTargetsByTransitiveDependencies
-                )
-            }
-        }.renderText().also {
-            file.appendText(it)
-            file.appendText("\n\n")
-        }
-    }
-
-    private fun writeStatisticsCsv(
-        graphStatistics: GraphStatistics,
-        file: File
-    ) {
-        listOf(
-            "node",
-            "owner",
-            "betweennessCentrality",
-            "degree",
-            "inDegree",
-            "outDegree",
-            "height",
-            "ancestors",
-            "descendants",
-            "changeRate",
-            "descendantsChangeRate",
-            "rebuiltTargetsByTransitiveDependencies",
-            "nonSelfOwnedDescendants",
-            "uniqueNonSelfOwnedDescendants",
-            "nonSelfOwnedAncestors",
-            "uniqueNonSelfOwnedAncestors"
-        ).joinToString(",").let { line -> file.appendText(line + "\n") }
-
-        graphStatistics.nodes.forEach {
-            listOf(
-                it.node.project,
-                it.node.owner,
-                "%.2f".format(it.betweennessCentrality),
-                it.degree,
-                it.inDegree,
-                it.outDegree,
-                it.height,
-                it.ancestors,
-                it.descendants,
-                it.changeRate,
-                it.descendantsChangeRate,
-                it.rebuiltTargetsByTransitiveDependencies,
-                it.ownershipInfo?.nonSelfOwnedDescendants,
-                it.ownershipInfo?.uniqueNonSelfOwnedDescendants,
-                it.ownershipInfo?.nonSelfOwnedAncestors,
-                it.ownershipInfo?.uniqueNonSelfOwnedAncestors
-            ).joinToString(",").let { line -> file.appendText(line + "\n") }
         }
     }
 
