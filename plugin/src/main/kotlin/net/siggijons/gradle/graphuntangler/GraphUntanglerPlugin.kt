@@ -21,6 +21,8 @@ class GraphUntanglerPlugin : Plugin<Project> {
             buildDirectory.file("untangler/changeFrequency.csv")
         val analyzeModuleGraph =
             buildDirectory.file("untangler/analyzeModuleGraph.txt")
+        val analyzeModuleGraphCsv =
+            buildDirectory.file("untangler/analyzeModuleGraph.csv")
         val analyzeModuleGraphDot =
             buildDirectory.file("untangler/analyzeModuleGraph.dot")
         val analyzeModuleGraphDotHeight =
@@ -44,6 +46,7 @@ class GraphUntanglerPlugin : Plugin<Project> {
             task.ownersFile.set(ownersFile)
             task.changeFrequencyFile.set(changeFrequencyFile)
             task.output.set(analyzeModuleGraph)
+            task.outputCsv.set(analyzeModuleGraphCsv)
             task.outputDot.set(analyzeModuleGraphDot)
             task.outputDotHeight.set(analyzeModuleGraphDotHeight)
             task.outputDotReduced.set(analyzeModuleGraphDotReduced)

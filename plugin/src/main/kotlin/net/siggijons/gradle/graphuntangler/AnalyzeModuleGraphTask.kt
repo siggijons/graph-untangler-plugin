@@ -42,6 +42,9 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     abstract val output: RegularFileProperty
 
     @get:OutputFile
+    abstract val outputCsv: RegularFileProperty
+
+    @get:OutputFile
     abstract val outputDot: RegularFileProperty
 
     @get:OutputFile
@@ -92,10 +95,14 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         val statisticsOutput = output.get().asFile
         statisticsOutput.delete()
 
+        val statisticsCsvOutput = outputCsv.get().asFile
+        statisticsCsvOutput.delete()
+
         // Write Stats
         logger.quiet("Writing reports")
         logger.quiet("Statistics $statisticsOutput")
         writeStatistics(nodeStatistics, statisticsOutput)
+        writeStatisticsCsv(nodeStatistics, statisticsCsvOutput)
 
         writeDotGraph(graph, outputDot.get().asFile)
         writeDotGraph(heightGraph, outputDotHeight.get().asFile)
@@ -106,7 +113,6 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         writeIsolatedSubgraphs(isolatedSubgraphs, projectsDir)
     }
 
-    // TODO: verify functionality without owners file and use extension properly
     private fun readOwners(): Owners {
         val file = ownersFile.orNull ?: return Owners(ownerMap = emptyMap())
         return OwnerFileReader().read(file.asFile)
@@ -238,11 +244,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                     "descendants",
                     "changeRate",
                     "descendantsChangeRate",
-                    "rebuiltTargetsByTransitiveDependencies",
-                    "nonSelfOwnedDescendants",
-                    "uniqueNonSelfOwnedDescendants",
-                    "nonSelfOwnedAncestors",
-                    "uniqueNonSelfOwnedAncestors"
+                    "rebuiltTargetsByTransitiveDependencies"
                 )
             }
             graphStatistics.nodes.forEach {
@@ -258,11 +260,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                     it.descendants,
                     it.changeRate,
                     it.descendantsChangeRate,
-                    it.rebuiltTargetsByTransitiveDependencies,
-                    it.ownershipInfo?.nonSelfOwnedDescendants,
-                    it.ownershipInfo?.uniqueNonSelfOwnedDescendants,
-                    it.ownershipInfo?.nonSelfOwnedAncestors,
-                    it.ownershipInfo?.uniqueNonSelfOwnedAncestors
+                    it.rebuiltTargetsByTransitiveDependencies
                 )
             }
         }.renderText().also {
@@ -271,7 +269,51 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         }
     }
 
-    enum class ColorMode { CHANGE_RATE, OWNER }
+    private fun writeStatisticsCsv(
+        graphStatistics: GraphStatistics,
+        file: File
+    ) {
+        listOf(
+            "node",
+            "owner",
+            "betweennessCentrality",
+            "degree",
+            "inDegree",
+            "outDegree",
+            "height",
+            "ancestors",
+            "descendants",
+            "changeRate",
+            "descendantsChangeRate",
+            "rebuiltTargetsByTransitiveDependencies",
+            "nonSelfOwnedDescendants",
+            "uniqueNonSelfOwnedDescendants",
+            "nonSelfOwnedAncestors",
+            "uniqueNonSelfOwnedAncestors"
+        ).joinToString(",").let { line -> file.appendText(line + "\n") }
+
+        graphStatistics.nodes.forEach {
+            listOf(
+                it.node.project,
+                it.node.owner,
+                "%.2f".format(it.betweennessCentrality),
+                it.degree,
+                it.inDegree,
+                it.outDegree,
+                it.height,
+                it.ancestors,
+                it.descendants,
+                it.changeRate,
+                it.descendantsChangeRate,
+                it.rebuiltTargetsByTransitiveDependencies,
+                it.ownershipInfo?.nonSelfOwnedDescendants,
+                it.ownershipInfo?.uniqueNonSelfOwnedDescendants,
+                it.ownershipInfo?.nonSelfOwnedAncestors,
+                it.ownershipInfo?.uniqueNonSelfOwnedAncestors
+            ).map { v -> v.toString() }.joinToString(",")
+                .let { line -> file.appendText(line + "\n") }
+        }
+    }
 
     private fun writeDotGraph(
         graph: AbstractGraph<DependencyNode, DependencyEdge>,
