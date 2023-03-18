@@ -74,6 +74,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         projectsDir.deleteRecursively()
         projectsDir.mkdirs()
         writeProjectSubgraphs(graph, projectsDir)
+        writeIsolatedSubgraphs(graph, projectsDir)
 
         writeStatistics(nodeStatistics)
         writeDotGraph(graph, outputDot.get().asFile)
@@ -102,6 +103,60 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                 subgraphHeightGraph,
                 File(outputDir, "${vertex.replace(":", "_")}-height.gv")
             )
+        }
+    }
+
+    /**
+     * Creates a subgraph for every module, or vertex, in the graph that only includes
+     * vertices that are either ancestors or descendants of the vertex, as well as the vertex
+     * itself.
+     *
+     * This creates a representation that makes it possible to reason how a specific module
+     * interacts with the rest of the graph and can help visualize the value captured by RTTD.
+     *
+     * Additionally a csv, isolated-subgraph-size.csv, is created capturing the size of each
+     * subgraph for further analysis.
+     *
+     * @see [NodeStatistics.rebuiltTargetsByTransitiveDependencies]
+     */
+    private fun writeIsolatedSubgraphs(
+        graph: DirectedAcyclicGraph<String, DependencyEdge>,
+        outputDir: File
+    ) {
+        val isolatedSubgraphSize = mutableListOf<Triple<String, Int, Int>>()
+        graph.vertexSet().forEach { vertex ->
+            val ancestors = graph.getAncestors(vertex)
+            val descendants = graph.getDescendants(vertex)
+
+            val builder = DirectedAcyclicGraph.createBuilder<String, DependencyEdge>(
+                DependencyEdge::class.java
+            )
+
+            builder.addGraph(graph)
+
+            val disconnected = graph.vertexSet() - ancestors - descendants - vertex
+            disconnected.forEach {
+                builder.removeVertex(it)
+            }
+
+            val isolatedDag = builder.build()
+
+            val graphSize = graph.vertexSet().size
+            val isolatedDagSize = isolatedDag.vertexSet().size
+            isolatedSubgraphSize.add(Triple(vertex, isolatedDagSize, graphSize))
+
+            writeDotGraph(
+                isolatedDag,
+                File(outputDir, "${vertex.replace(":", "_")}-isolated.gv")
+            )
+        }
+
+        with(File(outputDir, "isolated-subgraph-size.csv").printWriter()) {
+            println("vertex,isolatedDagSize,graphSize\n")
+            isolatedSubgraphSize.forEach {
+                println("${it.first},${it.second},${it.third}\n")
+            }
+            flush()
         }
     }
 
