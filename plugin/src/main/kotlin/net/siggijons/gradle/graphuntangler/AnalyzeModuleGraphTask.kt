@@ -117,6 +117,48 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                 subgraphHeightGraph,
                 File(outputDir, "${vertex.safeFileName}-height.gv")
             )
+
+            writeDescendantsCounts(
+                vertex = vertex,
+                descendants = descendants,
+                outputDir = outputDir
+            )
+        }
+    }
+
+    /**
+     * Write csv files with stats about the ownership of descendants.
+     */
+    private fun writeDescendantsCounts(
+        vertex: DependencyNode,
+        descendants: Set<DependencyNode>,
+        outputDir: File
+    ) {
+        val descendantsMap = descendants.groupBy(
+            keySelector = { it.owner },
+            valueTransform = { it.project }
+        )
+
+        with(
+            File(outputDir, "${vertex.safeFileName}-descendants-owners-count.csv").printWriter()
+        ) {
+            println("owner,modules")
+            descendantsMap.forEach { (owner, projects) ->
+                println("$owner,${projects.size}")
+            }
+            flush()
+        }
+
+        with(
+            File(outputDir, "${vertex.safeFileName}-descendants-owners.csv").printWriter()
+        ) {
+            println("owner,module")
+            descendantsMap.forEach { (owner, projects) ->
+                projects.forEach {
+                    println("$owner,$it")
+                }
+            }
+            flush()
         }
     }
 
@@ -163,15 +205,17 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
             isolatedSubgraphSize.add(Triple(vertex, isolatedDagSize, graphSize))
 
             writeDotGraph(
-                isolatedDag,
-                File(outputDir, "${vertex.safeFileName}-isolated.gv")
+                graph = isolatedDag,
+                file = File(outputDir, "${vertex.safeFileName}-isolated.gv"),
+                colorMode = ColorMode.OWNER
             )
 
             TransitiveReduction.INSTANCE.reduce(isolatedDag)
 
             writeDotGraph(
-                isolatedDag,
-                File(outputDir, "${vertex.safeFileName}-isolated-reduced.gv")
+                graph = isolatedDag,
+                file = File(outputDir, "${vertex.safeFileName}-isolated-reduced.gv"),
+                colorMode = ColorMode.OWNER
             )
         }
 
@@ -211,6 +255,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
             header {
                 row(
                     "node",
+                    "owner",
                     "betweennessCentrality",
                     "degree",
                     "inDegree",
@@ -220,12 +265,17 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                     "descendants",
                     "changeRate",
                     "descendantsChangeRate",
-                    "rebuiltTargetsByTransitiveDependencies"
+                    "rebuiltTargetsByTransitiveDependencies",
+                    "nonSelfOwnedDescendants",
+                    "uniqueNonSelfOwnedDescendants",
+                    "nonSelfOwnedAncestors",
+                    "uniqueNonSelfOwnedAncestors"
                 )
             }
             graphStatistics.nodes.forEach {
                 row(
-                    it.node,
+                    it.node.project,
+                    it.node.owner,
                     "%.2f".format(it.betweennessCentrality),
                     it.degree,
                     it.inDegree,
@@ -235,7 +285,11 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                     it.descendants,
                     it.changeRate,
                     it.descendantsChangeRate,
-                    it.rebuiltTargetsByTransitiveDependencies
+                    it.rebuiltTargetsByTransitiveDependencies,
+                    it.ownershipInfo?.nonSelfOwnedDescendants,
+                    it.ownershipInfo?.uniqueNonSelfOwnedDescendants,
+                    it.ownershipInfo?.nonSelfOwnedAncestors,
+                    it.ownershipInfo?.uniqueNonSelfOwnedAncestors
                 )
             }
         }.renderText().also {
@@ -244,16 +298,34 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         }
     }
 
+    enum class ColorMode { CHANGE_RATE, OWNER }
+
     private fun writeDotGraph(
         graph: AbstractGraph<DependencyNode, DependencyEdge>,
-        file: File
+        file: File,
+        colorMode: ColorMode = ColorMode.CHANGE_RATE
     ) {
         val exporter = DOTExporter<DependencyNode, DependencyEdge> { vertex ->
             vertex.project.replace("-", "_").replace(".", "_").replace(":", "_")
         }
 
+        val colorMap = if (colorMode == ColorMode.OWNER) {
+            val owners = graph.vertexSet()
+                .groupingBy { it.owner.orEmpty() }
+                .eachCount()
+                .toList()
+                .sortedByDescending { it.second }
+                .map { it.first }
+            seriesColors(owners)
+        } else {
+            emptyMap()
+        }
+
         exporter.setVertexAttributeProvider { v ->
-            val color = v.normalizedChangeRate?.rateColor()
+            val color = when (colorMode) {
+                ColorMode.CHANGE_RATE -> v.normalizedChangeRate?.rateColor()
+                ColorMode.OWNER -> colorMap[v.owner]
+            }
 
             var label = v.changeRate?.let {
                 "%s | %d".format(v.project, it)
@@ -287,6 +359,20 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
             val descendants = getDescendants(node)
             val ancestors = getAncestors(node)
             val descendantsChangeRate = descendants.sumOf { it.changeRate ?: 0 }
+
+            val ownershipInfo = NodeStatistics.OwnershipInfo(
+                nonSelfOwnedDescendants = descendants.count { it.owner != node.owner },
+                uniqueNonSelfOwnedDescendants = descendants
+                    .filter { it.owner != node.owner }
+                    .distinctBy { it.owner }
+                    .count(),
+                nonSelfOwnedAncestors = ancestors.count { it.owner != node.owner },
+                uniqueNonSelfOwnedAncestors = ancestors
+                    .filter { it.owner != node.owner }
+                    .distinctBy { it.owner }
+                    .count()
+            )
+
             val s = NodeStatistics(
                 node = node,
                 betweennessCentrality = requireNotNull(betweennessCentrality[node]) {
@@ -299,7 +385,8 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                 ancestors = ancestors.size,
                 descendants = descendants.size,
                 changeRate = node.changeRate ?: 0,
-                descendantsChangeRate = descendantsChangeRate
+                descendantsChangeRate = descendantsChangeRate,
+                ownershipInfo = ownershipInfo
             )
             nodes.add(s)
         }
