@@ -46,42 +46,41 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     }
 
     private fun writeStatistics(
-        nodeStatistics: List<Pair<String, List<NodeStatistics>>>
+        graphStatistics: GraphStatistics
     ) {
         val file = output.get().asFile
         file.delete()
-        nodeStatistics.forEach { (_, stats) ->
-            table {
-                cellStyle {
-                    paddingLeft = 1
-                    paddingRight = 1
-                }
-                header {
-                    row(
-                        "node",
-                        "betweennessCentrality",
-                        "degree",
-                        "inDegree",
-                        "outDegree",
-                        "height"
-                    )
-                }
-                stats.forEach {
-                    row(
-                        it.node,
-                        "%.2f".format(it.betweennessCentrality),
-                        it.degree,
-                        it.inDegree,
-                        it.outDegree,
-                        it.height
-                    )
-                }
-            }.renderText().also {
-                file.appendText(it)
-                file.appendText("\n\n")
+        table {
+            cellStyle {
+                paddingLeft = 1
+                paddingRight = 1
             }
+            header {
+                row(
+                    "node",
+                    "betweennessCentrality",
+                    "degree",
+                    "inDegree",
+                    "outDegree",
+                    "height"
+                )
+            }
+            graphStatistics.nodes.forEach {
+                row(
+                    it.node,
+                    "%.2f".format(it.betweennessCentrality),
+                    it.degree,
+                    it.inDegree,
+                    it.outDegree,
+                    it.height
+                )
+            }
+        }.renderText().also {
+            file.appendText(it)
+            file.appendText("\n\n")
         }
     }
+
 
     private fun writeDotGraph(graph: DefaultDirectedGraph<String, DependencyEdge>) {
         val exporter = DOTExporter<String, DependencyEdge> { vertex ->
@@ -104,7 +103,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
      * all vertices with 0 in degree as the roots. This is untested for graphs with multiple roots
      * but it could work.
      */
-    private fun DefaultDirectedGraph<String, DependencyEdge>.nodeStatistics(): List<Pair<String, List<NodeStatistics>>> {
+    private fun DefaultDirectedGraph<String, DependencyEdge>.nodeStatistics(): GraphStatistics {
         val betweennessCentrality = BetweennessCentrality(this).scores
         val roots = vertexSet().filter {
             inDegreeOf(it) == 0
@@ -124,8 +123,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
             )
         }
 
-        // Use first
-        return roots.take(1).map { root ->
+        val nodes = roots.first().let { root ->
             val iterator = BreadthFirstIterator(this, root)
             val stats = mutableListOf<NodeStatistics>()
             while (iterator.hasNext()) {
@@ -142,8 +140,12 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                 )
                 stats.add(s)
             }
-            root to stats
+            stats
         }
+
+        return GraphStatistics(
+            nodes = nodes
+        )
     }
 
     /**

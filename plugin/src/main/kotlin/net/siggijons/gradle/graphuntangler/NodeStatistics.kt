@@ -8,3 +8,7 @@ data class NodeStatistics(
     val outDegree: Int,
     val height: Int
 )
+
+data class GraphStatistics(
+    val nodes: List<NodeStatistics>
+)
