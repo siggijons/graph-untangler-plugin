@@ -229,6 +229,11 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         val heightMap: Map<V, Int>
     )
 
+    /**
+     * Generate a graph that consists only of nodes that participate in the longest paths
+     * across the graph. This can be useful when there are multiple longest paths in a graph.
+     * The algorithm is naive and unproven.
+     */
     private fun heightGraph(
         graph: DirectedAcyclicGraph<String, DependencyEdge>,
         nodes: List<NodeStatistics>
