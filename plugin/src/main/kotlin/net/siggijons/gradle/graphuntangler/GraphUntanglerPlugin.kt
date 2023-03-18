@@ -29,6 +29,8 @@ class GraphUntanglerPlugin : Plugin<Project> {
             buildDirectory.file("untangler/analyzeModuleGraph-reduced.dot")
         val analyzeModuleOutputAdjacencyMatrix =
             buildDirectory.file("untangler/analyzeModuleGraph-adjacencyMatrix.txt")
+        val projectGraphs =
+            buildDirectory.dir("untangler/projects")
 
         project.tasks.register("analyzeModuleGraph", AnalyzeModuleGraphTask::class.java) { task ->
             task.configurationsToAnalyze.set(extension.configurationsToAnalyze)
@@ -39,6 +41,7 @@ class GraphUntanglerPlugin : Plugin<Project> {
             task.outputDotHeight.set(analyzeModuleGraphDotHeight)
             task.outputDotReduced.set(analyzeModuleGraphDotReduced)
             task.outputAdjacencyMatrix.set(analyzeModuleOutputAdjacencyMatrix)
+            task.outputProjectSubgraphs.set(projectGraphs)
         }
 
         project.tasks.register(

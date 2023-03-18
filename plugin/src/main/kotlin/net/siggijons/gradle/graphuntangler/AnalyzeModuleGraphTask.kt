@@ -5,7 +5,6 @@ import com.jakewharton.picnic.table
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.artifacts.ProjectDependency
-import org.gradle.api.file.RegularFile
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.SetProperty
@@ -16,12 +15,14 @@ import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 import org.jgrapht.alg.TransitiveReduction
 import org.jgrapht.alg.scoring.BetweennessCentrality
+import org.jgrapht.graph.AbstractGraph
+import org.jgrapht.graph.AsSubgraph
 import org.jgrapht.graph.DirectedAcyclicGraph
 import org.jgrapht.nio.DefaultAttribute
 import org.jgrapht.nio.dot.DOTExporter
 import org.jgrapht.nio.matrix.MatrixExporter
 import org.jgrapht.traverse.TopologicalOrderIterator
-import java.lang.IllegalStateException
+import java.io.File
 
 abstract class AnalyzeModuleGraphTask : DefaultTask() {
 
@@ -50,6 +51,9 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     @get:OutputFile
     abstract val outputAdjacencyMatrix: RegularFileProperty
 
+    @get:OutputDirectory
+    abstract val outputProjectSubgraphs: DirectoryProperty
+
     @TaskAction
     fun run() {
         val dependencyPairs = project.rootProject
@@ -64,12 +68,28 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
 
         createCoOccurrenceMatrix(graph)
 
+        val projectsDir = outputProjectSubgraphs.get().asFile
+        projectsDir.deleteRecursively()
+        projectsDir.mkdirs()
+        writeProjectSubgraphs(graph, projectsDir)
+
         writeStatistics(nodeStatistics)
-        writeDotGraph(graph, outputDot.get())
-        writeDotGraph(heightGraph, outputDotHeight.get())
+        writeDotGraph(graph, outputDot.get().asFile)
+        writeDotGraph(heightGraph, outputDotHeight.get().asFile)
 
         TransitiveReduction.INSTANCE.reduce(graph)
-        writeDotGraph(graph, outputDotReduced.get())
+        writeDotGraph(graph, outputDotReduced.get().asFile)
+    }
+
+    private fun writeProjectSubgraphs(
+        graph: DirectedAcyclicGraph<String, DependencyEdge>,
+        outputDir: File
+    ) {
+        graph.vertexSet().forEach { vertex ->
+            val descendants = graph.getDescendants(vertex)
+            val subgraph = AsSubgraph(graph, descendants + vertex)
+            writeDotGraph(subgraph, File(outputDir, "${vertex.replace(":", "_")}.gv"))
+        }
     }
 
     private fun readFrequencyMap(): Map<String, Int> {
@@ -133,8 +153,8 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     }
 
     private fun writeDotGraph(
-        graph: DirectedAcyclicGraph<String, DependencyEdge>,
-        regularFile: RegularFile
+        graph: AbstractGraph<String, DependencyEdge>,
+        file: File
     ) {
         val exporter = DOTExporter<String, DependencyEdge> { vertex ->
             vertex.replace("-", "_").replace(".", "_").replace(":", "_")
@@ -144,7 +164,6 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
             mapOf("label" to DefaultAttribute.createAttribute(v))
         }
 
-        val file = regularFile.asFile
         file.delete()
         exporter.exportGraph(graph, file)
     }
