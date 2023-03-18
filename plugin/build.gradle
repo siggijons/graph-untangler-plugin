@@ -39,7 +39,7 @@ pluginBundle {
   mavenCoordinates {
     groupId = 'net.siggijons.gradle.graphuntangler'
     artifactId = 'plugin'
-    version = "0.0.1"
+    version = "0.0.2"
   }
 }
 
@@ -47,7 +47,7 @@ gradlePlugin {
   plugins {
     modulesGraphAssert {
       id = 'net.siggijons.gradle.graphuntangler'
-      version = '0.0.1'
+      version = '0.0.2'
       displayName = 'Graph Untangler Plugin'
       description = 'Gradle plugin to help untangle your dependencies.'
       implementationClass = 'net.siggijons.gradle.graphuntangler.GraphUntanglerPlugin'

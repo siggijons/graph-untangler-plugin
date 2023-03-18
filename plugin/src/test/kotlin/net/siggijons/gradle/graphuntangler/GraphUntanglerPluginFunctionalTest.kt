@@ -60,7 +60,7 @@ class GraphUntanglerPluginFunctionalTest {
         buildFile.writeText(
             """
             plugins {
-              id('net.siggijons.gradle.graphuntangler') version "0.0.1" 
+              id('net.siggijons.gradle.graphuntangler') version "0.0.2" 
             }
         """.trimIndent()
         )
