@@ -150,11 +150,9 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     }
 
     /**
-     * Calculate statistics for graph
+     * Calculate statistics for graph.
      *
-     * A breath first iterator is used to traverse the graph and calculate the height using
-     * all vertices with 0 in degree as the roots. This is untested for graphs with multiple roots
-     * but it could work.
+     * @param frequencyMap map of change frequency for each node.
      */
     private fun DirectedAcyclicGraph<String, DependencyEdge>.nodeStatistics(
         frequencyMap: Map<String, Int>
