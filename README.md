@@ -53,6 +53,50 @@ git checkout `git rev-list -n 1 --before="2021-12-13 00:00" HEAD`
 
 See `GenerateChangeFrequencyTask` for more details.
 
+## Owners
+**Experimental**
+
+Module owner information can be included in analysis by providing an `owners.yaml` file using the following format:
+
+```yaml
+app:
+  team: App
+  modules:
+    - :app
+    - :feature:settings
+feature:
+  team: Feature
+  modules:
+    - :feature:foryou
+    - :feature:interests
+    - :feature:bookmarks
+    - :feature:topic
+core:
+  team: Core
+  modules: 
+    - :core:common
+    - :core:data
+    - :core:data-test
+    - :core:database
+    - :core:datastore
+    - :core:datastore-test
+    - :core:designsystem
+    - :core:domain
+    - :core:model
+    - :core:network
+    - :core:ui
+    - :core:testing
+    - :core:analytics
+    - :sync:work
+    - :sync:sync-test
+tools:
+  team: Tools
+  modules:
+    - :app-nia-catalog
+    - :benchmarks
+    - :lint
+    - :ui-test-hilt-manifest
+```
 
 ## Outputs
 

@@ -36,7 +36,7 @@ class GraphUntanglerPlugin : Plugin<Project> {
         project.tasks.register("analyzeModuleGraph", AnalyzeModuleGraphTask::class.java) { task ->
             task.configurationsToAnalyze.set(extension.configurationsToAnalyze)
             task.rootNode.set(extension.rootNode)
-            task.ownersFile.set(project.rootProject.layout.projectDirectory.file("owners.yaml"))
+            task.ownersFile.set(project.rootProject.layout.projectDirectory.file("owners.yaml")) // TODO: should work without this!
             task.changeFrequencyFile.set(changeFrequencyFile)
             task.output.set(analyzeModuleGraph)
             task.outputDot.set(analyzeModuleGraphDot)
