@@ -16,8 +16,15 @@ class GraphUntanglerPlugin : Plugin<Project> {
             GraphUntanglerPluginExtension::class.java
         )
 
+        val analyzeModuleGraph =
+            project.rootProject.layout.buildDirectory.file("untangler/analyzeModuleGraph.txt")
+        val analyzeModuleGraphDot =
+            project.rootProject.layout.buildDirectory.file("untangler/analyzeModuleGraph.dot")
+
         project.tasks.register("analyzeModuleGraph", AnalyzeModuleGraphTask::class.java) {
-            it.configurationsToAnalyze = extension.configurationsToAnalyze
+            it.configurationsToAnalyze.set(extension.configurationsToAnalyze)
+            it.output.set(analyzeModuleGraph)
+            it.outputDot.set(analyzeModuleGraphDot)
         }
     }
 }

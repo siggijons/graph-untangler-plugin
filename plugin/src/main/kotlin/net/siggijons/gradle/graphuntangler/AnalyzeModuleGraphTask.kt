@@ -1,29 +1,96 @@
 package net.siggijons.gradle.graphuntangler
 
+import com.jakewharton.picnic.renderText
+import com.jakewharton.picnic.table
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.artifacts.ProjectDependency
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.SetProperty
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 import org.jgrapht.alg.scoring.BetweennessCentrality
 import org.jgrapht.graph.DefaultDirectedGraph
+import org.jgrapht.nio.DefaultAttribute
+import org.jgrapht.nio.dot.DOTExporter
 import org.jgrapht.traverse.BreadthFirstIterator
 
-open class AnalyzeModuleGraphTask : DefaultTask() {
+abstract class AnalyzeModuleGraphTask : DefaultTask() {
 
-    @Input
-    lateinit var configurationsToAnalyze: Set<String>
+    @get:Input
+    abstract val configurationsToAnalyze: SetProperty<String>
+
+    @get:OutputFile
+    abstract val output: RegularFileProperty
+
+    @get:OutputFile
+    abstract val outputDot: RegularFileProperty
 
     @TaskAction
     fun run() {
         val graph = project.rootProject
-            .dependencyPairs(configurationsToAnalyze)
+            .dependencyPairs(configurationsToAnalyze.get())
             .toJGraphTGraph()
 
         val nodeStatistics = graph.nodeStatistics()
-        nodeStatistics.forEach(::println)
 
-        project.rootProject.buildDir
+        writeStatistics(nodeStatistics)
+        writeDotGraph(graph)
+    }
+
+    private fun writeStatistics(nodeStatistics: List<NodeStatistics>) {
+        table {
+            cellStyle {
+                paddingLeft = 1
+                paddingRight = 1
+            }
+            header {
+                row(
+                    "node",
+                    "betweennessCentrality",
+                    "degree",
+                    "inDegree",
+                    "outDegree",
+                    "height"
+                )
+            }
+            nodeStatistics.forEach {
+                row(
+                    it.node,
+                    "%.2f".format(it.betweennessCentrality),
+                    it.degree,
+                    it.inDegree,
+                    it.outDegree,
+                    it.height
+                )
+            }
+        }
+            .renderText()
+            .also {
+                val file = output.get().asFile
+                file.delete()
+                file.writeText(it)
+            }
+    }
+
+    private fun writeDotGraph(graph: DefaultDirectedGraph<String, DependencyEdge>) {
+        val exporter = DOTExporter<String, DependencyEdge> { vertex ->
+            vertex.replace("-", "_").replace(".", "_")
+        }
+
+        exporter.setVertexAttributeProvider { v ->
+            mapOf("label" to DefaultAttribute.createAttribute(v))
+        }
+
+        // Graph is too noisy with labels
+        // exporter.setEdgeAttributeProvider { edge ->
+        //    mapOf("label" to DefaultAttribute.createAttribute(edge.label))
+        // }
+
+        val file = outputDot.get().asFile
+        file.delete()
+        exporter.exportGraph(graph, file)
     }
 
     /**
@@ -35,8 +102,11 @@ open class AnalyzeModuleGraphTask : DefaultTask() {
      */
     private fun DefaultDirectedGraph<String, DependencyEdge>.nodeStatistics(): List<NodeStatistics> {
         val betweennessCentrality = BetweennessCentrality(this).scores
-        val roots = vertexSet().find { inDegreeOf(it) == 0 }
-        val iterator = BreadthFirstIterator(this, roots)
+        val root = vertexSet().first {
+            inDegreeOf(it) == 0
+        }
+        println("Roots: $root of ${vertexSet()}")
+        val iterator = BreadthFirstIterator(this, root)
         val stats = mutableListOf<NodeStatistics>()
         while (iterator.hasNext()) {
             val node = iterator.next()
@@ -59,7 +129,7 @@ open class AnalyzeModuleGraphTask : DefaultTask() {
      * Create a list of all dependency pairs for the matching configurations
      *
      * @param configurationsToAnalyze configuration names to analyze
-     * @see [Configuration.getName]
+     * @see [org.gradle.api.artifacts.Configuration.getName]
      */
     private fun Project.dependencyPairs(
         configurationsToAnalyze: Set<String>
