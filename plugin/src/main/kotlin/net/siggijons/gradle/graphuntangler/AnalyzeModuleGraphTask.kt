@@ -105,7 +105,6 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         val root = vertexSet().first {
             inDegreeOf(it) == 0
         }
-        println("Roots: $root of ${vertexSet()}")
         val iterator = BreadthFirstIterator(this, root)
         val stats = mutableListOf<NodeStatistics>()
         while (iterator.hasNext()) {

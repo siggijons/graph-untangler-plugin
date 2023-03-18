@@ -21,10 +21,10 @@ class GraphUntanglerPlugin : Plugin<Project> {
         val analyzeModuleGraphDot =
             project.rootProject.layout.buildDirectory.file("untangler/analyzeModuleGraph.dot")
 
-        project.tasks.register("analyzeModuleGraph", AnalyzeModuleGraphTask::class.java) {
-            it.configurationsToAnalyze.set(extension.configurationsToAnalyze)
-            it.output.set(analyzeModuleGraph)
-            it.outputDot.set(analyzeModuleGraphDot)
+        project.tasks.register("analyzeModuleGraph", AnalyzeModuleGraphTask::class.java) { task ->
+            task.configurationsToAnalyze.set(extension.configurationsToAnalyze)
+            task.output.set(analyzeModuleGraph)
+            task.outputDot.set(analyzeModuleGraphDot)
         }
     }
 }
