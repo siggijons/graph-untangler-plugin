@@ -54,7 +54,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
             .toJGraphTGraph()
 
         val nodeStatistics = graph.nodeStatistics()
-        val heightGraph = heightGraph2(graph, nodeStatistics.nodes)
+        val heightGraph = heightGraph(graph, nodeStatistics.nodes)
 
         createCoOccurrenceMatrix(graph)
 
@@ -90,7 +90,12 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                     "degree",
                     "inDegree",
                     "outDegree",
-                    "height"
+                    "height",
+                    "ancestors",
+                    "descendants",
+                    "changeRate",
+                    "descendantsChangeRate",
+                    "spotifyBadness"
                 )
             }
             graphStatistics.nodes.forEach {
@@ -100,7 +105,12 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                     it.degree,
                     it.inDegree,
                     it.outDegree,
-                    it.height
+                    it.height,
+                    it.ancestors,
+                    it.descendants,
+                    it.changeRate,
+                    it.descendantsChangeRate,
+                    it.spotifyBadness
                 )
             }
         }.renderText().also {
@@ -140,6 +150,9 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         val nodes = mutableListOf<NodeStatistics>()
         while (iterator.hasNext()) {
             val node = iterator.next()
+            val descendants = getDescendants(node)
+            val ancestors = getAncestors(node)
+            val descendantsChangeRate = descendants.sumOf { FREQ[it] ?: 0 }
             val s = NodeStatistics(
                 node = node,
                 betweennessCentrality = requireNotNull(betweennessCentrality[node]) {
@@ -148,7 +161,11 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                 degree = degreeOf(node),
                 inDegree = inDegreeOf(node),
                 outDegree = outDegreeOf(node),
-                height = heights.heightMap[node] ?: -1
+                height = heights.heightMap[node] ?: -1,
+                ancestors = ancestors.size,
+                descendants = descendants.size,
+                changeRate = FREQ[node]!!,
+                descendantsChangeRate = descendantsChangeRate
             )
             nodes.add(s)
         }
@@ -198,28 +215,6 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     )
 
     private fun heightGraph(
-        graph: DirectedAcyclicGraph<String, DependencyEdge>,
-        nodes: List<NodeStatistics>
-    ): DirectedAcyclicGraph<String, DependencyEdge> {
-        val g = DirectedAcyclicGraph<String, DependencyEdge>(DependencyEdge::class.java)
-        nodes.forEach { g.addVertex(it.node) }
-
-        val byHeight = nodes.groupBy { it.height }
-        byHeight.forEach { (height, currentLevel) ->
-            val nextLevel = byHeight.getOrDefault(height - 1, emptyList())
-            currentLevel.forEach { current ->
-                val connected = nextLevel.filter { next ->
-                    graph.containsEdge(current.node, next.node)
-                }
-                connected.forEach {
-                    g.addEdge(current.node, it.node, DependencyEdge(label = "critical"))
-                }
-            }
-        }
-        return g
-    }
-
-    private fun heightGraph2(
         graph: DirectedAcyclicGraph<String, DependencyEdge>,
         nodes: List<NodeStatistics>
     ): DirectedAcyclicGraph<String, DependencyEdge> {
