@@ -9,6 +9,7 @@ data class Outputs(
     val outputDot: File,
     val outputDotHeight: File,
     val outputDotReduced: File,
+    val outputDotReducedOwners: File,
     val outputAdjacencyMatrix: File,
     val outputIsolatedSubgraphSize: File
 )

@@ -46,6 +46,9 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     abstract val outputDotReduced: RegularFileProperty
 
     @get:OutputFile
+    abstract val outputDotReducedOwners: RegularFileProperty
+
+    @get:OutputFile
     abstract val outputAdjacencyMatrix: RegularFileProperty
 
     @get:OutputFile
@@ -77,6 +80,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
             outputDot = outputDot.get().asFile,
             outputDotHeight = outputDotHeight.get().asFile,
             outputDotReduced = outputDotReduced.get().asFile,
+            outputDotReducedOwners = outputDotReducedOwners.get().asFile,
             outputAdjacencyMatrix = outputAdjacencyMatrix.get().asFile,
             outputIsolatedSubgraphSize = outputIsolatedSubgraphSize.get().asFile
         )

@@ -1,5 +1,6 @@
 package net.siggijons.gradle.graphuntangler
 
+import net.siggijons.gradle.graphuntangler.color.ColorMode
 import net.siggijons.gradle.graphuntangler.graph.DependencyEdge
 import net.siggijons.gradle.graphuntangler.graph.DependencyNode
 import net.siggijons.gradle.graphuntangler.graph.GraphUntangler
@@ -41,6 +42,11 @@ class AnalyzeModuleGraph {
         graphvizWriter.writeDotGraph(graph, outputs.outputDot)
         graphvizWriter.writeDotGraph(heightGraph, outputs.outputDotHeight)
         graphvizWriter.writeDotGraph(reducedGraph, outputs.outputDotReduced)
+        graphvizWriter.writeDotGraph(
+            reducedGraph,
+            outputs.outputDotReducedOwners,
+            colorMode = ColorMode.OWNER
+        )
 
         CoOccurrenceMatrixWriter(outputs.outputAdjacencyMatrix).write(graph)
         SubgraphSizeWriter(outputs.outputIsolatedSubgraphSize).write(isolatedSubgraphs)
