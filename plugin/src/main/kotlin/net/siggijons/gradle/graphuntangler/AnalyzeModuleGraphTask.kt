@@ -5,12 +5,14 @@ import com.jakewharton.picnic.table
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.artifacts.ProjectDependency
+import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.SetProperty
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.Optional
+import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 import org.jgrapht.alg.TransitiveReduction
@@ -89,6 +91,17 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
             val descendants = graph.getDescendants(vertex)
             val subgraph = AsSubgraph(graph, descendants + vertex)
             writeDotGraph(subgraph, File(outputDir, "${vertex.replace(":", "_")}.gv"))
+
+            val dag = DirectedAcyclicGraph.createBuilder<String, DependencyEdge>(
+                DependencyEdge::class.java
+            ).addGraph(subgraph).build()
+
+            val dagStats = dag.nodeStatistics(emptyMap())
+            val subgraphHeightGraph = heightGraph(dag, dagStats.nodes)
+            writeDotGraph(
+                subgraphHeightGraph,
+                File(outputDir, "${vertex.replace(":", "_")}-height.gv")
+            )
         }
     }
 
