@@ -5,6 +5,7 @@ import com.jakewharton.picnic.table
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.artifacts.ProjectDependency
+import org.gradle.api.file.RegularFile
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.SetProperty
@@ -12,6 +13,7 @@ import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
+import org.jgrapht.alg.TransitiveReduction
 import org.jgrapht.alg.scoring.BetweennessCentrality
 import org.jgrapht.graph.DefaultDirectedGraph
 import org.jgrapht.nio.DefaultAttribute
@@ -33,6 +35,12 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     @get:OutputFile
     abstract val outputDot: RegularFileProperty
 
+    @get:OutputFile
+    abstract val outputDotDepth: RegularFileProperty
+
+    @get:OutputFile
+    abstract val outputDotReduced: RegularFileProperty
+
     @TaskAction
     fun run() {
         val graph = project.rootProject
@@ -40,9 +48,14 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
             .toJGraphTGraph()
 
         val nodeStatistics = graph.nodeStatistics()
+        val depthGraph = depthGraph(graph, nodeStatistics.nodes)
 
         writeStatistics(nodeStatistics)
-        writeDotGraph(graph)
+        writeDotGraph(graph, outputDot.get())
+        writeDotGraph(depthGraph, outputDotDepth.get())
+
+        TransitiveReduction.INSTANCE.reduce(graph)
+        writeDotGraph(graph, outputDotReduced.get())
     }
 
     private fun writeStatistics(
@@ -62,7 +75,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                     "degree",
                     "inDegree",
                     "outDegree",
-                    "height"
+                    "depth"
                 )
             }
             graphStatistics.nodes.forEach {
@@ -72,7 +85,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                     it.degree,
                     it.inDegree,
                     it.outDegree,
-                    it.height
+                    it.depth
                 )
             }
         }.renderText().also {
@@ -81,8 +94,10 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         }
     }
 
-
-    private fun writeDotGraph(graph: DefaultDirectedGraph<String, DependencyEdge>) {
+    private fun writeDotGraph(
+        graph: DefaultDirectedGraph<String, DependencyEdge>,
+        regularFile: RegularFile
+    ) {
         val exporter = DOTExporter<String, DependencyEdge> { vertex ->
             vertex.replace("-", "_").replace(".", "_")
         }
@@ -91,7 +106,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
             mapOf("label" to DefaultAttribute.createAttribute(v))
         }
 
-        val file = outputDot.get().asFile
+        val file = regularFile.asFile
         file.delete()
         exporter.exportGraph(graph, file)
     }
@@ -136,7 +151,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                     degree = degreeOf(node),
                     inDegree = inDegreeOf(node),
                     outDegree = outDegreeOf(node),
-                    height = iterator.getDepth(node)
+                    depth = iterator.getDepth(node)
                 )
                 stats.add(s)
             }
@@ -146,6 +161,28 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         return GraphStatistics(
             nodes = nodes
         )
+    }
+
+    private fun depthGraph(
+        graph: DefaultDirectedGraph<String, DependencyEdge>,
+        nodes: List<NodeStatistics>
+    ): DefaultDirectedGraph<String, DependencyEdge> {
+        val g = DefaultDirectedGraph<String, DependencyEdge>(DependencyEdge::class.java)
+        nodes.forEach { g.addVertex(it.node) }
+
+        val byDepth = nodes.groupBy { it.depth }
+        byDepth.forEach { (height, currentLevel) ->
+            val nextLevel = byDepth.getOrDefault(height + 1, emptyList())
+            currentLevel.forEach { current ->
+                val connected = nextLevel.filter { next ->
+                    graph.containsEdge(current.node, next.node)
+                }
+                connected.forEach {
+                    g.addEdge(current.node, it.node, DependencyEdge(label = "critical"))
+                }
+            }
+        }
+        return g
     }
 
     /**

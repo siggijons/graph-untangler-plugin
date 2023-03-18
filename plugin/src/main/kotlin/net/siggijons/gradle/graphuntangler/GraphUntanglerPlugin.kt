@@ -16,16 +16,23 @@ class GraphUntanglerPlugin : Plugin<Project> {
             GraphUntanglerPluginExtension::class.java
         )
 
+        val buildDirectory = project.rootProject.layout.buildDirectory
         val analyzeModuleGraph =
-            project.rootProject.layout.buildDirectory.file("untangler/analyzeModuleGraph.txt")
+            buildDirectory.file("untangler/analyzeModuleGraph.txt")
         val analyzeModuleGraphDot =
-            project.rootProject.layout.buildDirectory.file("untangler/analyzeModuleGraph.dot")
+            buildDirectory.file("untangler/analyzeModuleGraph.dot")
+        val analyzeModuleGraphDotDepth =
+            buildDirectory.file("untangler/analyzeModuleGraph-depth.dot")
+        val analyzeModuleGraphDotReduced =
+            buildDirectory.file("untangler/analyzeModuleGraph-reduced.dot")
 
         project.tasks.register("analyzeModuleGraph", AnalyzeModuleGraphTask::class.java) { task ->
             task.configurationsToAnalyze.set(extension.configurationsToAnalyze)
             task.rootNode.set(extension.rootNode)
             task.output.set(analyzeModuleGraph)
             task.outputDot.set(analyzeModuleGraphDot)
+            task.outputDotDepth.set(analyzeModuleGraphDotDepth)
+            task.outputDotReduced.set(analyzeModuleGraphDotReduced)
         }
     }
 }

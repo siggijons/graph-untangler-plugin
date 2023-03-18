@@ -6,7 +6,7 @@ data class NodeStatistics(
     val degree: Int,
     val inDegree: Int,
     val outDegree: Int,
-    val height: Int
+    val depth: Int
 )
 
 data class GraphStatistics(
