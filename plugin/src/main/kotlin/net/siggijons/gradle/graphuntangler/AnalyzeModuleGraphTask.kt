@@ -61,11 +61,13 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         val dependencyPairs = project.rootProject
             .dependencyPairs(configurationsToAnalyze.get())
 
-        val graph = dependencyPairs.toJGraphTGraph()
-
         val frequencyMap = readFrequencyMap()
+        val graph = dependencyPairs.toJGraphTGraph(
+            ownerMap = emptyMap(),
+            frequencyMap = frequencyMap
+        )
 
-        val nodeStatistics = graph.nodeStatistics(frequencyMap)
+        val nodeStatistics = graph.nodeStatistics()
         val heightGraph = heightGraph(graph, nodeStatistics.nodes)
 
         createCoOccurrenceMatrix(graph)
@@ -85,26 +87,29 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     }
 
     private fun writeProjectSubgraphs(
-        graph: DirectedAcyclicGraph<String, DependencyEdge>,
+        graph: DirectedAcyclicGraph<DependencyNode, DependencyEdge>,
         outputDir: File
     ) {
         graph.vertexSet().forEach { vertex ->
             val descendants = graph.getDescendants(vertex)
             val subgraph = AsSubgraph(graph, descendants + vertex)
-            writeDotGraph(subgraph, File(outputDir, "${vertex.replace(":", "_")}.gv"))
+            writeDotGraph(subgraph, File(outputDir, "${vertex.safeFileName}.gv"))
 
-            val dag = DirectedAcyclicGraph.createBuilder<String, DependencyEdge>(
+            val dag = DirectedAcyclicGraph.createBuilder<DependencyNode, DependencyEdge>(
                 DependencyEdge::class.java
             ).addGraph(subgraph).build()
 
-            val dagStats = dag.nodeStatistics(emptyMap())
+            val dagStats = dag.nodeStatistics()
             val subgraphHeightGraph = heightGraph(dag, dagStats.nodes)
             writeDotGraph(
                 subgraphHeightGraph,
-                File(outputDir, "${vertex.replace(":", "_")}-height.gv")
+                File(outputDir, "${vertex.safeFileName}-height.gv")
             )
         }
     }
+
+    private val DependencyNode.safeFileName: String
+        get() = project.replace(":", "_")
 
     /**
      * Creates a subgraph for every module, or vertex, in the graph that only includes
@@ -120,15 +125,15 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
      * @see [NodeStatistics.rebuiltTargetsByTransitiveDependencies]
      */
     private fun writeIsolatedSubgraphs(
-        graph: DirectedAcyclicGraph<String, DependencyEdge>,
+        graph: DirectedAcyclicGraph<DependencyNode, DependencyEdge>,
         outputDir: File
     ) {
-        val isolatedSubgraphSize = mutableListOf<Triple<String, Int, Int>>()
+        val isolatedSubgraphSize = mutableListOf<Triple<DependencyNode, Int, Int>>()
         graph.vertexSet().forEach { vertex ->
             val ancestors = graph.getAncestors(vertex)
             val descendants = graph.getDescendants(vertex)
 
-            val builder = DirectedAcyclicGraph.createBuilder<String, DependencyEdge>(
+            val builder = DirectedAcyclicGraph.createBuilder<DependencyNode, DependencyEdge>(
                 DependencyEdge::class.java
             )
 
@@ -147,14 +152,21 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
 
             writeDotGraph(
                 isolatedDag,
-                File(outputDir, "${vertex.replace(":", "_")}-isolated.gv")
+                File(outputDir, "${vertex.safeFileName}-isolated.gv")
+            )
+
+            TransitiveReduction.INSTANCE.reduce(isolatedDag)
+
+            writeDotGraph(
+                isolatedDag,
+                File(outputDir, "${vertex.safeFileName}-isolated-reduced.gv")
             )
         }
 
         with(File(outputDir, "isolated-subgraph-size.csv").printWriter()) {
             println("vertex,isolatedDagSize,graphSize\n")
             isolatedSubgraphSize.forEach {
-                println("${it.first},${it.second},${it.third}\n")
+                println("${it.first.project},${it.second},${it.third}\n")
             }
             flush()
         }
@@ -167,10 +179,10 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         }
     }
 
-    private fun createCoOccurrenceMatrix(graph: DirectedAcyclicGraph<String, DependencyEdge>) {
-        val exporter = MatrixExporter<String, DependencyEdge>(
+    private fun createCoOccurrenceMatrix(graph: DirectedAcyclicGraph<DependencyNode, DependencyEdge>) {
+        val exporter = MatrixExporter<DependencyNode, DependencyEdge>(
             MatrixExporter.Format.SPARSE_ADJACENCY_MATRIX
-        ) { v -> v }
+        ) { v -> v.project }
         exporter.exportGraph(graph, outputAdjacencyMatrix.get().asFile)
     }
 
@@ -221,15 +233,24 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     }
 
     private fun writeDotGraph(
-        graph: AbstractGraph<String, DependencyEdge>,
+        graph: AbstractGraph<DependencyNode, DependencyEdge>,
         file: File
     ) {
-        val exporter = DOTExporter<String, DependencyEdge> { vertex ->
-            vertex.replace("-", "_").replace(".", "_").replace(":", "_")
+        val exporter = DOTExporter<DependencyNode, DependencyEdge> { vertex ->
+            vertex.project.replace("-", "_").replace(".", "_").replace(":", "_")
         }
 
         exporter.setVertexAttributeProvider { v ->
-            mapOf("label" to DefaultAttribute.createAttribute(v))
+            val color = v.normalizedChangeRate?.rateColor()
+
+            val label = v.changeRate?.let {
+                "%s | %d".format(v.project, it)
+            } ?: v.project
+            mapOf(
+                "label" to DefaultAttribute.createAttribute(label),
+                "style" to DefaultAttribute.createAttribute("filled"),
+                "fillcolor" to DefaultAttribute.createAttribute(color)
+            )
         }
 
         file.delete()
@@ -238,12 +259,9 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
 
     /**
      * Calculate statistics for graph.
-     *
-     * @param frequencyMap map of change frequency for each node.
      */
-    private fun DirectedAcyclicGraph<String, DependencyEdge>.nodeStatistics(
-        frequencyMap: Map<String, Int>
-    ): GraphStatistics {
+    private fun DirectedAcyclicGraph<DependencyNode, DependencyEdge>.nodeStatistics():
+            GraphStatistics {
         val betweennessCentrality = BetweennessCentrality(this).scores
         val heights = heights()
         val iterator = TopologicalOrderIterator(this)
@@ -252,7 +270,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
             val node = iterator.next()
             val descendants = getDescendants(node)
             val ancestors = getAncestors(node)
-            val descendantsChangeRate = descendants.sumOf { frequencyMap[it] ?: 0 }
+            val descendantsChangeRate = descendants.sumOf { it.changeRate ?: 0 }
             val s = NodeStatistics(
                 node = node,
                 betweennessCentrality = requireNotNull(betweennessCentrality[node]) {
@@ -264,7 +282,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                 height = heights.heightMap[node] ?: -1,
                 ancestors = ancestors.size,
                 descendants = descendants.size,
-                changeRate = frequencyMap[node] ?: 0,
+                changeRate = node.changeRate ?: 0,
                 descendantsChangeRate = descendantsChangeRate
             )
             nodes.add(s)
@@ -305,7 +323,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         }
     }
 
-    private fun DirectedAcyclicGraph<String, DependencyEdge>.heights(): Heights<String> {
+    private fun DirectedAcyclicGraph<DependencyNode, DependencyEdge>.heights(): Heights<DependencyNode> {
         val map = HeightMeasurer(graph = this).calculateHeightMap()
         return Heights(map)
     }
@@ -320,12 +338,12 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
      * The algorithm is naive and unproven.
      */
     private fun heightGraph(
-        graph: DirectedAcyclicGraph<String, DependencyEdge>,
+        graph: DirectedAcyclicGraph<DependencyNode, DependencyEdge>,
         nodes: List<NodeStatistics>
-    ): DirectedAcyclicGraph<String, DependencyEdge> {
-        val g = DirectedAcyclicGraph<String, DependencyEdge>(DependencyEdge::class.java)
+    ): DirectedAcyclicGraph<DependencyNode, DependencyEdge> {
+        val g = DirectedAcyclicGraph<DependencyNode, DependencyEdge>(DependencyEdge::class.java)
 
-        val added = mutableSetOf<String>()
+        val added = mutableSetOf<DependencyNode>()
         val byHeight = nodes.sortedByDescending { it.height }.groupBy { it.height }
         byHeight.forEach { (_, currentLevel) ->
 
@@ -374,13 +392,34 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     /**
      * Create a DirectedGraph from all dependency pairs in a project
      */
-    private fun List<Triple<Project, Project, String>>.toJGraphTGraph(): DirectedAcyclicGraph<String, DependencyEdge> {
-        val g = DirectedAcyclicGraph<String, DependencyEdge>(DependencyEdge::class.java)
+    private fun List<Triple<Project, Project, String>>.toJGraphTGraph(
+        ownerMap: Map<String, String>,
+        frequencyMap: Map<String, Int>
+    ): DirectedAcyclicGraph<DependencyNode, DependencyEdge> {
+        val g = DirectedAcyclicGraph<DependencyNode, DependencyEdge>(DependencyEdge::class.java)
+
+        val maxChangeRate = frequencyMap.values.maxOrNull()?.toDouble() ?: 1.0
+
+        val projectMap = flatMap { listOf(it.first, it.second) }
+            .distinct()
+            .associateWith {
+                DependencyNode(
+                    project = it.path,
+                    owner = ownerMap[it.path],
+                    changeRate = frequencyMap[it.path],
+                    normalizedChangeRate = frequencyMap[it.path]?.let { rate ->
+                        rate / maxChangeRate
+                    }
+                )
+            }
+
         forEach { (a, b, label) ->
             try {
-                g.addVertex(a.path)
-                g.addVertex(b.path)
-                g.addEdge(a.path, b.path, DependencyEdge(label = label))
+                val nodeA = projectMap[a]
+                val nodeB = projectMap[b]
+                g.addVertex(nodeA)
+                g.addVertex(nodeB)
+                g.addEdge(nodeA, nodeB, DependencyEdge(label = label))
             } catch (e: IllegalArgumentException) {
                 throw IllegalStateException("Error when adding $a -> $b", e)
             }

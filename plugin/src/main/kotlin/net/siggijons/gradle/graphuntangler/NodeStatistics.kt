@@ -1,7 +1,7 @@
 package net.siggijons.gradle.graphuntangler
 
 data class NodeStatistics(
-    val node: String,
+    val node: DependencyNode,
     val betweennessCentrality: Double,
     val degree: Int,
     val inDegree: Int,
