@@ -6,8 +6,10 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.Property
 import org.gradle.api.provider.SetProperty
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 import org.jgrapht.alg.scoring.BetweennessCentrality
@@ -20,6 +22,10 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
 
     @get:Input
     abstract val configurationsToAnalyze: SetProperty<String>
+
+    @get:Optional
+    @get:Input
+    abstract val rootNode: Property<String?>
 
     @get:OutputFile
     abstract val output: RegularFileProperty
@@ -44,18 +50,13 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     ) {
         val file = output.get().asFile
         file.delete()
-        nodeStatistics.forEach { (root, stats) ->
+        nodeStatistics.forEach { (_, stats) ->
             table {
                 cellStyle {
                     paddingLeft = 1
                     paddingRight = 1
                 }
                 header {
-                    row {
-                        cell("Root: $root") {
-                            columnSpan = 6
-                        }
-                    }
                     row(
                         "node",
                         "betweennessCentrality",
@@ -91,11 +92,6 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
             mapOf("label" to DefaultAttribute.createAttribute(v))
         }
 
-        // Graph is too noisy with labels
-        // exporter.setEdgeAttributeProvider { edge ->
-        //    mapOf("label" to DefaultAttribute.createAttribute(edge.label))
-        // }
-
         val file = outputDot.get().asFile
         file.delete()
         exporter.exportGraph(graph, file)
@@ -107,16 +103,29 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
      * A breath first iterator is used to traverse the graph and calculate the height using
      * all vertices with 0 in degree as the roots. This is untested for graphs with multiple roots
      * but it could work.
-     *
-     * TODO: find more sane roots. Detect app? Do configuration?
      */
     private fun DefaultDirectedGraph<String, DependencyEdge>.nodeStatistics(): List<Pair<String, List<NodeStatistics>>> {
         val betweennessCentrality = BetweennessCentrality(this).scores
         val roots = vertexSet().filter {
             inDegreeOf(it) == 0
+        }.filter {
+            !rootNode.isPresent || it == rootNode.get()
         }
 
-        return roots.map { root ->
+        if (roots.size > 1) {
+            logger.warn(
+                "More than one potential root found.\n" +
+                        "\trootNode=${rootNode.orNull}.\n" +
+                        "\troots=$roots\n" +
+                        "First root will be used to calculate height. To configure use:\n" +
+                        "untangler {\n" +
+                        "\trootNode = \"app\"\n" +
+                        "}"
+            )
+        }
+
+        // Use first
+        return roots.take(1).map { root ->
             val iterator = BreadthFirstIterator(this, root)
             val stats = mutableListOf<NodeStatistics>()
             while (iterator.hasNext()) {

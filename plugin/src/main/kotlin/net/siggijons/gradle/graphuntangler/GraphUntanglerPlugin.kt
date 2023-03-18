@@ -23,6 +23,7 @@ class GraphUntanglerPlugin : Plugin<Project> {
 
         project.tasks.register("analyzeModuleGraph", AnalyzeModuleGraphTask::class.java) { task ->
             task.configurationsToAnalyze.set(extension.configurationsToAnalyze)
+            task.rootNode.set(extension.rootNode)
             task.output.set(analyzeModuleGraph)
             task.outputDot.set(analyzeModuleGraphDot)
         }
