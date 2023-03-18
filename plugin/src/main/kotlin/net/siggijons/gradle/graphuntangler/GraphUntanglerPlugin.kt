@@ -18,7 +18,7 @@ class GraphUntanglerPlugin : Plugin<Project> {
 
         val buildDirectory = project.rootProject.layout.buildDirectory
         val changeFrequencyFile =
-            buildDirectory.file("untangler/changeFrequency.txt")
+            buildDirectory.file("untangler/changeFrequency.csv")
         val analyzeModuleGraph =
             buildDirectory.file("untangler/analyzeModuleGraph.txt")
         val analyzeModuleGraphDot =
@@ -29,6 +29,8 @@ class GraphUntanglerPlugin : Plugin<Project> {
             buildDirectory.file("untangler/analyzeModuleGraph-reduced.dot")
         val analyzeModuleOutputAdjacencyMatrix =
             buildDirectory.file("untangler/analyzeModuleGraph-adjacencyMatrix.txt")
+        val isolatedSubgraphSize =
+            buildDirectory.file("untangler/isolated-subgraph-size.csv")
         val projectGraphs =
             buildDirectory.dir("untangler/projects")
 
@@ -46,6 +48,7 @@ class GraphUntanglerPlugin : Plugin<Project> {
             task.outputDotHeight.set(analyzeModuleGraphDotHeight)
             task.outputDotReduced.set(analyzeModuleGraphDotReduced)
             task.outputAdjacencyMatrix.set(analyzeModuleOutputAdjacencyMatrix)
+            task.outputIsolatedSubgraphSize.set(isolatedSubgraphSize)
             task.outputProjectSubgraphs.set(projectGraphs)
         }
 

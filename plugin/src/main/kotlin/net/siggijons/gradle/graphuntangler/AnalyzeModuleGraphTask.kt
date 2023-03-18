@@ -53,6 +53,9 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     @get:OutputFile
     abstract val outputAdjacencyMatrix: RegularFileProperty
 
+    @get:OutputFile
+    abstract val outputIsolatedSubgraphSize: RegularFileProperty
+
     @get:OutputDirectory
     abstract val outputProjectSubgraphs: DirectoryProperty
 
@@ -190,7 +193,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
             )
         }
 
-        with(File(outputDir, "isolated-subgraph-size.csv").printWriter()) {
+        with(outputIsolatedSubgraphSize.get().asFile.printWriter()) {
             println("vertex,isolatedDagSize,fullGraphSize\n")
             graphs.forEach {
                 println("${it.vertex.project},${it.isolatedDagSize},${it.fullGraphSize}\n")
