@@ -1,5 +1,5 @@
 plugins {
-  id "com.gradle.plugin-publish" version "0.21.0"
+  id "com.gradle.plugin-publish" version "1.1.0"
   id "java-gradle-plugin"
 }
 
@@ -31,25 +31,18 @@ compileTestKotlin {
   }
 }
 
-pluginBundle {
-  website = 'https://github.com/siggijons/graph-untangler-plugin'
-  vcsUrl = 'https://github.com/siggijons/graph-untangler-plugin'
-  tags = ['graph', 'multiprojects', 'module', 'gradle']
-
-  mavenCoordinates {
-    groupId = 'net.siggijons.gradle.graphuntangler'
-    artifactId = 'plugin'
-    version = "0.0.2"
-  }
-}
+group = 'net.siggijons.net'
+version = '0.0.2'
 
 gradlePlugin {
+  website = 'https://github.com/siggijons/graph-untangler-plugin'
+  vcsUrl = 'https://github.com/siggijons/graph-untangler-plugin.git'
   plugins {
-    modulesGraphAssert {
+    gradletestPlugin {
       id = 'net.siggijons.gradle.graphuntangler'
-      version = '0.0.2'
       displayName = 'Graph Untangler Plugin'
       description = 'Gradle plugin to help untangle your dependencies.'
+      tags.addAll('graph', 'multiprojects', 'module', 'gradle')
       implementationClass = 'net.siggijons.gradle.graphuntangler.GraphUntanglerPlugin'
     }
   }
