@@ -7,8 +7,11 @@ import org.gradle.api.provider.SetProperty
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
+import java.io.IOException
 import java.time.LocalDate
 import java.time.LocalDateTime
+
+private const val DEFAULT_FREQUENCY_DAYS = 28L
 
 abstract class GenerateChangeFrequencyTask : DefaultTask() {
 
@@ -20,8 +23,16 @@ abstract class GenerateChangeFrequencyTask : DefaultTask() {
 
     @TaskAction
     fun run() {
-        val days = 28L
-        val date = LocalDate.now().minusDays(days).atStartOfDay()
+        val frequencyStart = (project.findProperty("frequency-start") as String?)?.let {
+            LocalDate.parse(it)
+        } ?: LocalDate.now()
+
+        val days = (project.findProperty("frequency-days") as String?)?.toLong()
+            ?: DEFAULT_FREQUENCY_DAYS
+
+        val date = frequencyStart.minusDays(days).atStartOfDay()
+
+        logger.info("Checking change frequency since $date")
 
         val frequencyMap = project.subprojects.associate {
             it.path to frequency(it, date)
@@ -49,7 +60,7 @@ abstract class GenerateChangeFrequencyTask : DefaultTask() {
             )
                 .trim()
                 .toInt()
-        } catch (e: Exception) {
+        } catch (e: IOException) {
             logger.warn("Error checking frequency of $project", e)
             0
         }
