@@ -19,6 +19,8 @@ import org.jgrapht.graph.DirectedAcyclicGraph
 import org.jgrapht.nio.DefaultAttribute
 import org.jgrapht.nio.dot.DOTExporter
 import org.jgrapht.traverse.TopologicalOrderIterator
+import java.lang.Exception
+import java.lang.IllegalStateException
 
 abstract class AnalyzeModuleGraphTask : DefaultTask() {
 
@@ -99,7 +101,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         regularFile: RegularFile
     ) {
         val exporter = DOTExporter<String, DependencyEdge> { vertex ->
-            vertex.replace("-", "_").replace(".", "_")
+            vertex.replace("-", "_").replace(".", "_").replace(":", "_")
         }
 
         exporter.setVertexAttributeProvider { v ->
@@ -120,26 +122,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
      */
     private fun DirectedAcyclicGraph<String, DependencyEdge>.nodeStatistics(): GraphStatistics {
         val betweennessCentrality = BetweennessCentrality(this).scores
-        val roots = vertexSet().filter {
-            inDegreeOf(it) == 0
-        }.filter {
-            !rootNode.isPresent || it == rootNode.get()
-        }
-
-        if (roots.size > 1) {
-            logger.warn(
-                "More than one potential root found.\n" +
-                        "\trootNode=${rootNode.orNull}.\n" +
-                        "\troots=$roots\n" +
-                        "First root will be used to calculate height. To configure use:\n" +
-                        "untangler {\n" +
-                        "\trootNode = \"app\"\n" +
-                        "}"
-            )
-        }
-
         val heights = heights()
-
         val iterator = TopologicalOrderIterator(this)
         val nodes = mutableListOf<NodeStatistics>()
         while (iterator.hasNext()) {
@@ -248,9 +231,13 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     private fun List<Triple<Project, Project, String>>.toJGraphTGraph(): DirectedAcyclicGraph<String, DependencyEdge> {
         val g = DirectedAcyclicGraph<String, DependencyEdge>(DependencyEdge::class.java)
         forEach { (a, b, label) ->
-            g.addVertex(a.name)
-            g.addVertex(b.name)
-            g.addEdge(a.name, b.name, DependencyEdge(label = label))
+            try {
+                g.addVertex(a.path)
+                g.addVertex(b.path)
+                g.addEdge(a.path, b.path, DependencyEdge(label = label))
+            } catch (e: Exception) {
+                throw IllegalStateException("Error when adding ${a} -> ${b}", e)
+            }
         }
         return g
     }
