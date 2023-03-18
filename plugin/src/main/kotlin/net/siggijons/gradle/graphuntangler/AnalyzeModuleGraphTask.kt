@@ -2,6 +2,11 @@ package net.siggijons.gradle.graphuntangler
 
 import com.jakewharton.picnic.renderText
 import com.jakewharton.picnic.table
+import net.siggijons.gradle.graphuntangler.model.DependencyEdge
+import net.siggijons.gradle.graphuntangler.model.DependencyNode
+import net.siggijons.gradle.graphuntangler.model.GraphUntangler
+import net.siggijons.gradle.graphuntangler.model.IsolatedSubgraphDetails
+import net.siggijons.gradle.graphuntangler.model.SubgraphDetails
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.artifacts.ProjectDependency
@@ -15,15 +20,11 @@ import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
-import org.jgrapht.alg.TransitiveReduction
-import org.jgrapht.alg.scoring.BetweennessCentrality
 import org.jgrapht.graph.AbstractGraph
-import org.jgrapht.graph.AsSubgraph
 import org.jgrapht.graph.DirectedAcyclicGraph
 import org.jgrapht.nio.DefaultAttribute
 import org.jgrapht.nio.dot.DOTExporter
 import org.jgrapht.nio.matrix.MatrixExporter
-import org.jgrapht.traverse.TopologicalOrderIterator
 import java.io.File
 
 abstract class AnalyzeModuleGraphTask : DefaultTask() {
@@ -62,34 +63,41 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
 
     @TaskAction
     fun run() {
+        // Inputs
         val dependencyPairs = project.rootProject
             .dependencyPairs(configurationsToAnalyze.get())
-
         val owners = readOwnersIntoMap()
-
         val frequencyMap = readFrequencyMap()
+
+        // Convert Projects to a Graph
         val graph = dependencyPairs.toJGraphTGraph(
             ownerMap = owners,
             frequencyMap = frequencyMap
         )
 
-        val nodeStatistics = graph.nodeStatistics()
-        val heightGraph = heightGraph(graph, nodeStatistics.nodes)
+        // Calculate Statistics
+        val graphUntangler = GraphUntangler()
+        val nodeStatistics = graphUntangler.nodeStatistics(graph)
+        val reducedGraph = graphUntangler.safeReduce(graph)
+        val heightGraph = graphUntangler.heightGraph(graph, nodeStatistics.nodes)
+        val subgraphs = graphUntangler.analyzeSubgraphs(graph)
+        val isolatedSubgraphs = graphUntangler.isolateSubgraphs(graph)
 
-        createCoOccurrenceMatrix(graph)
-
+        // Clean
         val projectsDir = outputProjectSubgraphs.get().asFile
         projectsDir.deleteRecursively()
         projectsDir.mkdirs()
-        writeProjectSubgraphs(graph, projectsDir)
-        writeIsolatedSubgraphs(graph, projectsDir)
 
+        // Write Stats
         writeStatistics(nodeStatistics)
+
         writeDotGraph(graph, outputDot.get().asFile)
         writeDotGraph(heightGraph, outputDotHeight.get().asFile)
+        writeDotGraph(reducedGraph, outputDotReduced.get().asFile)
 
-        TransitiveReduction.INSTANCE.reduce(graph)
-        writeDotGraph(graph, outputDotReduced.get().asFile)
+        writeCoOccurrenceMatrix(graph)
+        writeProjectSubgraphs(subgraphs, projectsDir)
+        writeIsolatedSubgraphs(isolatedSubgraphs, projectsDir)
     }
 
     // TODO: verify functionality without owners file and use extension properly
@@ -99,30 +107,26 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     }
 
     private fun writeProjectSubgraphs(
-        graph: DirectedAcyclicGraph<DependencyNode, DependencyEdge>,
+        graphs: List<SubgraphDetails>,
         outputDir: File
     ) {
-        graph.vertexSet().forEach { vertex ->
-            val descendants = graph.getDescendants(vertex)
-            val subgraph = AsSubgraph(graph, descendants + vertex)
-            writeDotGraph(subgraph, File(outputDir, "${vertex.safeFileName}.gv"))
+        graphs.forEach { subgraph ->
+            with(subgraph) {
+                writeDotGraph(
+                    subgraph.subgraph,
+                    File(outputDir, "${vertex.safeFileName}.gv")
+                )
 
-            val dag = DirectedAcyclicGraph.createBuilder<DependencyNode, DependencyEdge>(
-                DependencyEdge::class.java
-            ).addGraph(subgraph).build()
-
-            val dagStats = dag.nodeStatistics()
-            val subgraphHeightGraph = heightGraph(dag, dagStats.nodes)
-            writeDotGraph(
-                subgraphHeightGraph,
-                File(outputDir, "${vertex.safeFileName}-height.gv")
-            )
-
-            writeDescendantsCounts(
-                vertex = vertex,
-                descendants = descendants,
-                outputDir = outputDir
-            )
+                writeDotGraph(
+                    subgraphHeightGraph,
+                    File(outputDir, "${vertex.safeFileName}-height.gv")
+                )
+                writeDescendantsCounts(
+                    vertex = vertex,
+                    descendants = descendants,
+                    outputDir = outputDir
+                )
+            }
         }
     }
 
@@ -165,64 +169,28 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     private val DependencyNode.safeFileName: String
         get() = project.replace(":", "_")
 
-    /**
-     * Creates a subgraph for every module, or vertex, in the graph that only includes
-     * vertices that are either ancestors or descendants of the vertex, as well as the vertex
-     * itself.
-     *
-     * This creates a representation that makes it possible to reason how a specific module
-     * interacts with the rest of the graph and can help visualize the value captured by RTTD.
-     *
-     * Additionally a csv, isolated-subgraph-size.csv, is created capturing the size of each
-     * subgraph for further analysis.
-     *
-     * @see [NodeStatistics.rebuiltTargetsByTransitiveDependencies]
-     */
     private fun writeIsolatedSubgraphs(
-        graph: DirectedAcyclicGraph<DependencyNode, DependencyEdge>,
+        graphs: List<IsolatedSubgraphDetails>,
         outputDir: File
     ) {
-        val isolatedSubgraphSize = mutableListOf<Triple<DependencyNode, Int, Int>>()
-        graph.vertexSet().forEach { vertex ->
-            val ancestors = graph.getAncestors(vertex)
-            val descendants = graph.getDescendants(vertex)
-
-            val builder = DirectedAcyclicGraph.createBuilder<DependencyNode, DependencyEdge>(
-                DependencyEdge::class.java
-            )
-
-            builder.addGraph(graph)
-
-            val disconnected = graph.vertexSet() - ancestors - descendants - vertex
-            disconnected.forEach {
-                builder.removeVertex(it)
-            }
-
-            val isolatedDag = builder.build()
-
-            val graphSize = graph.vertexSet().size
-            val isolatedDagSize = isolatedDag.vertexSet().size
-            isolatedSubgraphSize.add(Triple(vertex, isolatedDagSize, graphSize))
-
+        graphs.forEach { details ->
             writeDotGraph(
-                graph = isolatedDag,
-                file = File(outputDir, "${vertex.safeFileName}-isolated.gv"),
+                graph = details.isolatedDag,
+                file = File(outputDir, "${details.vertex.safeFileName}-isolated.gv"),
                 colorMode = ColorMode.OWNER
             )
 
-            TransitiveReduction.INSTANCE.reduce(isolatedDag)
-
             writeDotGraph(
-                graph = isolatedDag,
-                file = File(outputDir, "${vertex.safeFileName}-isolated-reduced.gv"),
+                graph = details.reducedDag,
+                file = File(outputDir, "${details.vertex.safeFileName}-isolated-reduced.gv"),
                 colorMode = ColorMode.OWNER
             )
         }
 
         with(File(outputDir, "isolated-subgraph-size.csv").printWriter()) {
-            println("vertex,isolatedDagSize,graphSize\n")
-            isolatedSubgraphSize.forEach {
-                println("${it.first.project},${it.second},${it.third}\n")
+            println("vertex,isolatedDagSize,fullGraphSize\n")
+            graphs.forEach {
+                println("${it.vertex.project},${it.isolatedDagSize},${it.fullGraphSize}\n")
             }
             flush()
         }
@@ -235,7 +203,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         }
     }
 
-    private fun createCoOccurrenceMatrix(graph: DirectedAcyclicGraph<DependencyNode, DependencyEdge>) {
+    private fun writeCoOccurrenceMatrix(graph: DirectedAcyclicGraph<DependencyNode, DependencyEdge>) {
         val exporter = MatrixExporter<DependencyNode, DependencyEdge>(
             MatrixExporter.Format.SPARSE_ADJACENCY_MATRIX
         ) { v -> v.project }
@@ -345,133 +313,6 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         exporter.exportGraph(graph, file)
     }
 
-    /**
-     * Calculate statistics for graph.
-     */
-    private fun DirectedAcyclicGraph<DependencyNode, DependencyEdge>.nodeStatistics():
-            GraphStatistics {
-        val betweennessCentrality = BetweennessCentrality(this).scores
-        val heights = heights()
-        val iterator = TopologicalOrderIterator(this)
-        val nodes = mutableListOf<NodeStatistics>()
-        while (iterator.hasNext()) {
-            val node = iterator.next()
-            val descendants = getDescendants(node)
-            val ancestors = getAncestors(node)
-            val descendantsChangeRate = descendants.sumOf { it.changeRate ?: 0 }
-
-            val ownershipInfo = NodeStatistics.OwnershipInfo(
-                nonSelfOwnedDescendants = descendants.count { it.owner != node.owner },
-                uniqueNonSelfOwnedDescendants = descendants
-                    .filter { it.owner != node.owner }
-                    .distinctBy { it.owner }
-                    .count(),
-                nonSelfOwnedAncestors = ancestors.count { it.owner != node.owner },
-                uniqueNonSelfOwnedAncestors = ancestors
-                    .filter { it.owner != node.owner }
-                    .distinctBy { it.owner }
-                    .count()
-            )
-
-            val s = NodeStatistics(
-                node = node,
-                betweennessCentrality = requireNotNull(betweennessCentrality[node]) {
-                    "betweennessCentrality not found for $node"
-                },
-                degree = degreeOf(node),
-                inDegree = inDegreeOf(node),
-                outDegree = outDegreeOf(node),
-                height = heights.heightMap[node] ?: -1,
-                ancestors = ancestors.size,
-                descendants = descendants.size,
-                changeRate = node.changeRate ?: 0,
-                descendantsChangeRate = descendantsChangeRate,
-                ownershipInfo = ownershipInfo
-            )
-            nodes.add(s)
-        }
-
-        return GraphStatistics(
-            nodes = nodes
-        )
-    }
-
-    class HeightMeasurer<V, E>(
-        private val graph: DirectedAcyclicGraph<V, E>
-    ) {
-
-        private val heightMap = LinkedHashMap<V, Int>()
-
-        fun calculateHeightMap(): Map<V, Int> {
-            graph.vertexSet().forEach { v ->
-                heightOf(v)
-            }
-            return heightMap.toMap()
-        }
-
-        private fun heightOf(v: V): Int {
-            val cached = heightMap[v]
-            if (cached != null) {
-                return cached
-            }
-
-            val descendants = graph.getDescendants(v)
-            val height = if (descendants.isEmpty()) {
-                0
-            } else {
-                descendants.maxOf { heightOf(it) } + 1
-            }
-            heightMap[v] = height
-            return height
-        }
-    }
-
-    private fun DirectedAcyclicGraph<DependencyNode, DependencyEdge>.heights(): Heights<DependencyNode> {
-        val map = HeightMeasurer(graph = this).calculateHeightMap()
-        return Heights(map)
-    }
-
-    data class Heights<V>(
-        val heightMap: Map<V, Int>
-    )
-
-    /**
-     * Generate a graph that consists only of nodes that participate in the longest paths
-     * across the graph. This can be useful when there are multiple longest paths in a graph.
-     * The algorithm is naive and unproven.
-     */
-    private fun heightGraph(
-        graph: DirectedAcyclicGraph<DependencyNode, DependencyEdge>,
-        nodes: List<NodeStatistics>
-    ): DirectedAcyclicGraph<DependencyNode, DependencyEdge> {
-        val g = DirectedAcyclicGraph<DependencyNode, DependencyEdge>(DependencyEdge::class.java)
-
-        val added = mutableSetOf<DependencyNode>()
-        val byHeight = nodes.sortedByDescending { it.height }.groupBy { it.height }
-        byHeight.forEach { (_, currentLevel) ->
-
-            if (added.isEmpty()) {
-                currentLevel.forEach {
-                    g.addVertex(it.node)
-                    added.add(it.node)
-                }
-            } else {
-                val connectionsToPrevious = currentLevel.map { v ->
-                    v.node to added.filter { u -> graph.containsEdge(u, v.node) }
-                }.filter { it.second.isNotEmpty() }
-
-                added.clear()
-                connectionsToPrevious.forEach { (u, vs) ->
-                    vs.forEach {
-                        g.addVertex(u)
-                        g.addEdge(it, u, DependencyEdge(label = "Height Neighbor"))
-                        added.add(u)
-                    }
-                }
-            }
-        }
-        return g
-    }
 
     /**
      * Create a list of all dependency pairs for the matching configurations

@@ -1,5 +1,7 @@
 package net.siggijons.gradle.graphuntangler
 
+import net.siggijons.gradle.graphuntangler.model.DependencyNode
+
 data class NodeStatistics(
     val node: DependencyNode,
     val betweennessCentrality: Double,
