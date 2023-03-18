@@ -18,6 +18,7 @@ import org.jgrapht.alg.scoring.BetweennessCentrality
 import org.jgrapht.graph.DirectedAcyclicGraph
 import org.jgrapht.nio.DefaultAttribute
 import org.jgrapht.nio.dot.DOTExporter
+import org.jgrapht.nio.matrix.MatrixExporter
 import org.jgrapht.traverse.TopologicalOrderIterator
 import java.lang.Exception
 import java.lang.IllegalStateException
@@ -43,6 +44,9 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     @get:OutputFile
     abstract val outputDotReduced: RegularFileProperty
 
+    @get:OutputFile
+    abstract val outputAdjacencyMatrix: RegularFileProperty
+
     @TaskAction
     fun run() {
         val graph = project.rootProject
@@ -52,12 +56,21 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         val nodeStatistics = graph.nodeStatistics()
         val heightGraph = heightGraph2(graph, nodeStatistics.nodes)
 
+        createCoOccurrenceMatrix(graph)
+
         writeStatistics(nodeStatistics)
         writeDotGraph(graph, outputDot.get())
         writeDotGraph(heightGraph, outputDotHeight.get())
 
         TransitiveReduction.INSTANCE.reduce(graph)
         writeDotGraph(graph, outputDotReduced.get())
+    }
+
+    private fun createCoOccurrenceMatrix(graph: DirectedAcyclicGraph<String, DependencyEdge>) {
+        val exporter = MatrixExporter<String, DependencyEdge>(
+            MatrixExporter.Format.SPARSE_ADJACENCY_MATRIX
+        ) { v -> v }
+        exporter.exportGraph(graph, outputAdjacencyMatrix.get().asFile)
     }
 
     private fun writeStatistics(
