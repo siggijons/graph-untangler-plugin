@@ -1,0 +1,54 @@
+plugins {
+  id "com.gradle.plugin-publish" version "0.21.0"
+  id "java-gradle-plugin"
+}
+
+apply plugin: 'kotlin'
+
+repositories {
+  mavenCentral()
+}
+
+dependencies {
+  implementation gradleApi()
+  implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.6.21"
+  implementation "org.jgrapht:jgrapht-core:1.5.1"
+  implementation 'com.jakewharton.picnic:picnic:0.6.0'
+
+  testImplementation 'junit:junit:4.13.2'
+}
+
+compileKotlin {
+  kotlinOptions {
+    jvmTarget = "11"
+  }
+}
+compileTestKotlin {
+  kotlinOptions {
+    jvmTarget = "11"
+  }
+}
+
+pluginBundle {
+  website = 'https://github.com/siggijons/graph-untangler-plugin'
+  vcsUrl = 'https://github.com/siggijons/graph-untangler-plugin'
+  tags = ['graph', 'multiprojects', 'module', 'gradle']
+
+  mavenCoordinates {
+    groupId = 'net.siggijons.gradle.graphuntangler'
+    artifactId = 'plugin'
+    version = "0.0.1"
+  }
+}
+
+gradlePlugin {
+  plugins {
+    modulesGraphAssert {
+      id = 'net.siggijons.gradle.graphuntangler'
+      version = '0.0.1'
+      displayName = 'Graph Untangler Plugin'
+      description = 'Gradle plugin to help untangle your dependencies.'
+      implementationClass = 'net.siggijons.gradle.graphuntangler.GraphUntanglerPlugin'
+    }
+  }
+}
