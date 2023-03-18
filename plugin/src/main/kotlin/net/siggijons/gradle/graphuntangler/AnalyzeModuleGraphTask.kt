@@ -92,8 +92,9 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         writeDotGraph(graph, outputDotReduced.get().asFile)
     }
 
+    // TODO: verify functionality without owners file and use extension properly
     private fun readOwnersIntoMap(): Map<String, String> {
-        val file = ownersFile?.orNull ?: return emptyMap()
+        val file = ownersFile.orNull ?: return emptyMap()
         return OwnerFileReader().read(file.asFile)
     }
 
