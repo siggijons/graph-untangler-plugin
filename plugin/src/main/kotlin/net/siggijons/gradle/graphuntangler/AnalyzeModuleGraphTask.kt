@@ -2,14 +2,6 @@ package net.siggijons.gradle.graphuntangler
 
 import net.siggijons.gradle.graphuntangler.model.DependencyEdge
 import net.siggijons.gradle.graphuntangler.model.DependencyNode
-import net.siggijons.gradle.graphuntangler.model.GraphUntangler
-import net.siggijons.gradle.graphuntangler.writer.CSVStatisticsWriter
-import net.siggijons.gradle.graphuntangler.writer.CoOccurrenceMatrixWriter
-import net.siggijons.gradle.graphuntangler.writer.GraphvizWriter
-import net.siggijons.gradle.graphuntangler.writer.PicnicStatisticsWriter
-import net.siggijons.gradle.graphuntangler.writer.SubgraphSizeWriter
-import net.siggijons.gradle.graphuntangler.writer.SubgraphWriter
-import net.siggijons.gradle.graphuntangler.writer.SubgraphsDependantsWriter
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.artifacts.ProjectDependency
@@ -76,42 +68,19 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
             frequencyMap = frequencyMap
         )
 
-        // Calculate Statistics
-        logger.quiet("Calculating Statistics")
-        val graphUntangler = GraphUntangler()
-        val nodeStatistics = graphUntangler.nodeStatistics(graph)
-        val reducedGraph = graphUntangler.safeReduce(graph)
-        val heightGraph = graphUntangler.heightGraph(graph, nodeStatistics.nodes)
-        val subgraphs = graphUntangler.analyzeSubgraphs(graph)
-        val isolatedSubgraphs = graphUntangler.isolateSubgraphs(graph)
+        val outputs = Outputs(
+            projectsDir = outputProjectSubgraphs.get().asFile,
+            statisticsOutput = output.get().asFile,
+            statisticsCsvOutput = outputCsv.get().asFile,
+            outputDot = outputDot.get().asFile,
+            outputDotHeight = outputDotHeight.get().asFile,
+            outputDotReduced = outputDotReduced.get().asFile,
+            outputAdjacencyMatrix = outputAdjacencyMatrix.get().asFile,
+            outputIsolatedSubgraphSize = outputIsolatedSubgraphSize.get().asFile
+        )
 
-        // Clean
-        val projectsDir = outputProjectSubgraphs.get().asFile
-        projectsDir.deleteRecursively()
-        projectsDir.mkdirs()
-
-        val statisticsOutput = output.get().asFile
-        statisticsOutput.delete()
-
-        val statisticsCsvOutput = outputCsv.get().asFile
-        statisticsCsvOutput.delete()
-
-        // Write Stats
-        logger.quiet("Writing reports")
-        logger.quiet("Statistics $statisticsOutput")
-
-        PicnicStatisticsWriter(statisticsOutput).write(nodeStatistics)
-        CSVStatisticsWriter(statisticsCsvOutput).write(nodeStatistics)
-
-        val graphvizWriter = GraphvizWriter()
-        graphvizWriter.writeDotGraph(graph, outputDot.get().asFile)
-        graphvizWriter.writeDotGraph(heightGraph, outputDotHeight.get().asFile)
-        graphvizWriter.writeDotGraph(reducedGraph, outputDotReduced.get().asFile)
-
-        CoOccurrenceMatrixWriter(outputAdjacencyMatrix.get().asFile).write(graph)
-        SubgraphSizeWriter(outputIsolatedSubgraphSize.get().asFile).write(isolatedSubgraphs)
-        SubgraphsDependantsWriter(projectsDir).write(subgraphs)
-        SubgraphWriter(projectsDir).write(subgraphs, isolatedSubgraphs)
+        logger.quiet("Analyzing Graph")
+        AnalyzeModuleGraph().run(graph, outputs)
     }
 
     private fun readOwners(): Owners {
