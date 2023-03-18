@@ -25,6 +25,15 @@ plugins {
 ./gradlew analyzeModuleGraph
 ```
 
+### Known Issues
+Does not play well with configuration cache and up-to-date checks appear to be off for the same
+reason of not treating the `Project` as an input.
+
+Workaround is to run without configuration cache and re-run tasks 
+```
+./gradlew analyzeModuleGraph --no-configuration-cache --rerun
+```
+
 ## Calculate Module Change Freqency
 ```
 ./gradlew generateChangeFrequencyFile
