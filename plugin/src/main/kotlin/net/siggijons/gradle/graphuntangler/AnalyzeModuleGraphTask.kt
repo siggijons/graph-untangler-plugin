@@ -258,7 +258,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                 "%s | %d".format(v.project, it)
             } ?: v.project
             if (v.owner != null) {
-                label += " | ${v.owner}"
+                label += "\n${v.owner}"
             }
 
             mapOf(
@@ -417,12 +417,14 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
 
         val projectMap = flatMap { listOf(it.first, it.second) }
             .distinct()
-            .associateWith {
+            .associateWith { project ->
                 DependencyNode(
-                    project = it.path,
-                    owner = ownerMap[it.path],
-                    changeRate = frequencyMap[it.path],
-                    normalizedChangeRate = frequencyMap[it.path]?.let { rate ->
+                    project = project.path,
+                    owner = ownerMap.entries.firstOrNull {
+                        project.path.startsWith(it.key)
+                    }?.value,
+                    changeRate = frequencyMap[project.path],
+                    normalizedChangeRate = frequencyMap[project.path]?.let { rate ->
                         rate / maxChangeRate
                     }
                 )
