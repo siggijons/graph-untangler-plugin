@@ -2,4 +2,5 @@
 build/
 local.properties
 .idea/
-
+bin/
+.DS_Store

@@ -15,7 +15,7 @@ class GraphUntanglerPlugin : Plugin<Project> {
             "untangler",
             GraphUntanglerPluginExtension::class.java
         )
-        project.task("createDAG") { task ->
+        project.task("analyzeModuleGraph") { task ->
             task.doLast {
                 println("Hello from the GraphUntanglerPlugin. ${extension.message}")
             }
