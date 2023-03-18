@@ -1,9 +1,12 @@
 package net.siggijons.gradle.graphuntangler
 
+import org.gradle.api.DefaultTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ProjectDependency
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.TaskAction
 import org.jgrapht.alg.scoring.BetweennessCentrality
 import org.jgrapht.graph.DefaultDirectedGraph
 import org.jgrapht.traverse.BreadthFirstIterator
@@ -20,16 +23,29 @@ class GraphUntanglerPlugin : Plugin<Project> {
             "untangler",
             GraphUntanglerPluginExtension::class.java
         )
-        project.task("analyzeModuleGraph") { task ->
-            task.doLast {
-                println("Hello from the GraphUntanglerPlugin. ${extension.message}")
-                val graph = project.rootProject
-                    .dependencyPairs(extension.configurationsToAnalyze)
-                    .toJGraphTGraph()
 
-                graph.nodeStatistics().forEach(::println)
-            }
+        project.tasks.register("analyzeModuleGraph", AnalyzeModuleGraphTask::class.java) {
+            it.configurationsToAnalyze = extension.configurationsToAnalyze
         }
+    }
+}
+
+
+open class AnalyzeModuleGraphTask : DefaultTask() {
+
+    @Input
+    lateinit var configurationsToAnalyze: Set<String>
+
+    @TaskAction
+    fun run() {
+        val graph = project.rootProject
+            .dependencyPairs(configurationsToAnalyze)
+            .toJGraphTGraph()
+
+        val nodeStatistics = graph.nodeStatistics()
+        nodeStatistics.forEach(::println)
+
+        project.rootProject.buildDir
     }
 
     /**
