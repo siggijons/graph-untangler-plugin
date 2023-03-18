@@ -2,7 +2,6 @@ package net.siggijons.gradle.graphuntangler
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import java.io.File
 
 /**
  * @suppress unused used as a plugin
@@ -33,10 +32,14 @@ class GraphUntanglerPlugin : Plugin<Project> {
         val projectGraphs =
             buildDirectory.dir("untangler/projects")
 
+        val ownersFile = project.rootProject.layout.projectDirectory.file(extension.ownerFile)
+            .let { file ->
+                project.provider { if (file.asFile.exists()) file else null }
+            }
+
         project.tasks.register("analyzeModuleGraph", AnalyzeModuleGraphTask::class.java) { task ->
             task.configurationsToAnalyze.set(extension.configurationsToAnalyze)
-            task.rootNode.set(extension.rootNode)
-            task.ownersFile.set(project.rootProject.layout.projectDirectory.file("owners.yaml")) // TODO: should work without this!
+            task.ownersFile.set(ownersFile)
             task.changeFrequencyFile.set(changeFrequencyFile)
             task.output.set(analyzeModuleGraph)
             task.outputDot.set(analyzeModuleGraphDot)

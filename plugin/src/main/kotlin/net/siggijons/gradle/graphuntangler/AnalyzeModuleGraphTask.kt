@@ -12,7 +12,6 @@ import org.gradle.api.Project
 import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
-import org.gradle.api.provider.Property
 import org.gradle.api.provider.SetProperty
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
@@ -35,10 +34,6 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     @get:Optional
     @get:InputFile
     abstract val ownersFile: RegularFileProperty
-
-    @get:Optional
-    @get:Input
-    abstract val rootNode: Property<String?>
 
     @get:InputFile
     abstract val changeFrequencyFile: RegularFileProperty
@@ -68,6 +63,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         val dependencyPairs = project.rootProject
             .dependencyPairs(configurationsToAnalyze.get())
         val owners = readOwners()
+        logger.info("Read owners: ${owners.ownerMap}")
         val frequencyMap = readFrequencyMap()
 
         logger.quiet("Creating Graph")
