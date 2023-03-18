@@ -108,7 +108,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         writeDotGraph(heightGraph, outputDotHeight.get().asFile)
         writeDotGraph(reducedGraph, outputDotReduced.get().asFile)
 
-        writeCoOccurrenceMatrix(graph)
+        writeCoOccurrenceMatrix(graph, outputAdjacencyMatrix.get().asFile)
         writeProjectSubgraphs(subgraphs, projectsDir)
         writeIsolatedSubgraphs(isolatedSubgraphs, projectsDir)
     }
@@ -215,11 +215,14 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
         }
     }
 
-    private fun writeCoOccurrenceMatrix(graph: DirectedAcyclicGraph<DependencyNode, DependencyEdge>) {
+    private fun writeCoOccurrenceMatrix(
+        graph: DirectedAcyclicGraph<DependencyNode, DependencyEdge>,
+        outputFile: File
+    ) {
         val exporter = MatrixExporter<DependencyNode, DependencyEdge>(
             MatrixExporter.Format.SPARSE_ADJACENCY_MATRIX
         ) { v -> v.project }
-        exporter.exportGraph(graph, outputAdjacencyMatrix.get().asFile)
+        exporter.exportGraph(graph, outputFile)
     }
 
     private fun writeStatistics(
