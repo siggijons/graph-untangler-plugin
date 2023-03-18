@@ -14,7 +14,7 @@ class GraphUntanglerPluginTest {
         project.pluginManager.apply("net.siggijons.gradle.graphuntangler")
 
         // When
-        val task = project.tasks.getByName("createDAG")
+        val task = project.tasks.getByName("analyzeModuleGraph")
 
         // Then
         assertNotNull(task)

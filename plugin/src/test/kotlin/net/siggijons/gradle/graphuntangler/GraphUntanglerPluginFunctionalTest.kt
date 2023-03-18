@@ -68,12 +68,12 @@ class GraphUntanglerPluginFunctionalTest {
         // When
         val result = GradleRunner.create()
             .withProjectDir(testProjectFile)
-            .withArguments(":createDAG")
+            .withArguments(":analyzeModuleGraph")
             .build()
 
         // Then
         assertTrue(result.output.contains("Hello from the GraphUntanglerPlugin!"))
-        assertEquals(TaskOutcome.SUCCESS, result.task(":createDAG")?.outcome)
+        assertEquals(TaskOutcome.SUCCESS, result.task(":analyzeModuleGraph")?.outcome)
     }
 
 }
