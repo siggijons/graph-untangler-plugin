@@ -5,6 +5,7 @@ import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -49,6 +50,30 @@ class GraphUntanglerPluginFunctionalTest {
         // Then
         assertTrue(result.output.contains("Hello world!"))
         assertEquals(TaskOutcome.SUCCESS, result.task(":helloWorld")?.outcome)
+    }
+
+    @Ignore("Cant find the plugin")
+    @Test
+    fun testPlugin() {
+        // Given
+        settingsFile.writeText("rootProject.name = 'hello-world'")
+        buildFile.writeText(
+            """
+            plugins {
+              id('net.siggijons.gradle.graphuntangler') version "0.0.1" 
+            }
+        """.trimIndent()
+        )
+
+        // When
+        val result = GradleRunner.create()
+            .withProjectDir(testProjectFile)
+            .withArguments(":createDAG")
+            .build()
+
+        // Then
+        assertTrue(result.output.contains("Hello from the GraphUntanglerPlugin!"))
+        assertEquals(TaskOutcome.SUCCESS, result.task(":createDAG")?.outcome)
     }
 
 }
