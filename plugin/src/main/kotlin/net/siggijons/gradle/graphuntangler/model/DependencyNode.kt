@@ -6,6 +6,3 @@ data class DependencyNode(
     val changeRate: Int?,
     val normalizedChangeRate: Double?
 )
-
-val DependencyNode.safeFileName: String
-    get() = project.replace(":", "_")
