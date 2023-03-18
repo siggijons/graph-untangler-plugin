@@ -17,6 +17,8 @@ class GraphUntanglerPlugin : Plugin<Project> {
         )
 
         val buildDirectory = project.rootProject.layout.buildDirectory
+        val changeFrequencyFile =
+            buildDirectory.file("untangler/changeFrequency.txt")
         val analyzeModuleGraph =
             buildDirectory.file("untangler/analyzeModuleGraph.txt")
         val analyzeModuleGraphDot =
@@ -31,11 +33,20 @@ class GraphUntanglerPlugin : Plugin<Project> {
         project.tasks.register("analyzeModuleGraph", AnalyzeModuleGraphTask::class.java) { task ->
             task.configurationsToAnalyze.set(extension.configurationsToAnalyze)
             task.rootNode.set(extension.rootNode)
+            task.changeFrequencyFile.set(changeFrequencyFile)
             task.output.set(analyzeModuleGraph)
             task.outputDot.set(analyzeModuleGraphDot)
             task.outputDotHeight.set(analyzeModuleGraphDotHeight)
             task.outputDotReduced.set(analyzeModuleGraphDotReduced)
             task.outputAdjacencyMatrix.set(analyzeModuleOutputAdjacencyMatrix)
+        }
+
+        project.tasks.register(
+            "generateChangeFrequencyFile",
+            GenerateChangeFrequencyTask::class.java
+        ) { task ->
+            task.configurationsToAnalyze.set(extension.configurationsToAnalyze)
+            task.output.set(changeFrequencyFile)
         }
     }
 }

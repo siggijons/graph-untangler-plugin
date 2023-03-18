@@ -10,6 +10,7 @@ import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.SetProperty
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
@@ -32,6 +33,9 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     @get:Input
     abstract val rootNode: Property<String?>
 
+    @get:InputFile
+    abstract val changeFrequencyFile: RegularFileProperty
+
     @get:OutputFile
     abstract val output: RegularFileProperty
 
@@ -49,11 +53,14 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
 
     @TaskAction
     fun run() {
-        val graph = project.rootProject
+        val dependencyPairs = project.rootProject
             .dependencyPairs(configurationsToAnalyze.get())
-            .toJGraphTGraph()
 
-        val nodeStatistics = graph.nodeStatistics()
+        val graph = dependencyPairs.toJGraphTGraph()
+
+        val frequencyMap = readFrequencyMap()
+
+        val nodeStatistics = graph.nodeStatistics(frequencyMap)
         val heightGraph = heightGraph(graph, nodeStatistics.nodes)
 
         createCoOccurrenceMatrix(graph)
@@ -64,6 +71,13 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
 
         TransitiveReduction.INSTANCE.reduce(graph)
         writeDotGraph(graph, outputDotReduced.get())
+    }
+
+    private fun readFrequencyMap(): Map<String, Int> {
+        return changeFrequencyFile.get().asFile.readLines().drop(1).associate {
+            val s = it.split(",")
+            s[0] to s[1].toInt()
+        }
     }
 
     private fun createCoOccurrenceMatrix(graph: DirectedAcyclicGraph<String, DependencyEdge>) {
@@ -143,7 +157,9 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
      * all vertices with 0 in degree as the roots. This is untested for graphs with multiple roots
      * but it could work.
      */
-    private fun DirectedAcyclicGraph<String, DependencyEdge>.nodeStatistics(): GraphStatistics {
+    private fun DirectedAcyclicGraph<String, DependencyEdge>.nodeStatistics(
+        frequencyMap: Map<String, Int>
+    ): GraphStatistics {
         val betweennessCentrality = BetweennessCentrality(this).scores
         val heights = heights()
         val iterator = TopologicalOrderIterator(this)
@@ -152,7 +168,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
             val node = iterator.next()
             val descendants = getDescendants(node)
             val ancestors = getAncestors(node)
-            val descendantsChangeRate = descendants.sumOf { FREQ[it] ?: 0 }
+            val descendantsChangeRate = descendants.sumOf { frequencyMap[it] ?: 0 }
             val s = NodeStatistics(
                 node = node,
                 betweennessCentrality = requireNotNull(betweennessCentrality[node]) {
@@ -164,7 +180,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                 height = heights.heightMap[node] ?: -1,
                 ancestors = ancestors.size,
                 descendants = descendants.size,
-                changeRate = FREQ[node]!!,
+                changeRate = frequencyMap[node] ?: 0,
                 descendantsChangeRate = descendantsChangeRate
             )
             nodes.add(s)
