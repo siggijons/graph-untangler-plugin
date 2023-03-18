@@ -8,7 +8,7 @@ import org.junit.Test
 class GraphUntanglerPluginTest {
 
     @Test
-    fun pluginAddsTaskToProject() {
+    fun pluginAddsAnalyzeTaskToProject() {
         // Given
         val project = ProjectBuilder.builder().build()
         project.pluginManager.apply("net.siggijons.gradle.graphuntangler")
@@ -20,4 +20,16 @@ class GraphUntanglerPluginTest {
         assertNotNull(task)
     }
 
+    @Test
+    fun pluginAddsChangeFrequencyTaskToProject() {
+        // Given
+        val project = ProjectBuilder.builder().build()
+        project.pluginManager.apply("net.siggijons.gradle.graphuntangler")
+
+        // When
+        val task = project.tasks.getByName("generateChangeFrequencyFile")
+
+        // Then
+        assertNotNull(task)
+    }
 }
