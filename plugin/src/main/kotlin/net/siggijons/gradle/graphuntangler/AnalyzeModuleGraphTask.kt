@@ -141,7 +141,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                     "descendants",
                     "changeRate",
                     "descendantsChangeRate",
-                    "spotifyBadness"
+                    "rebuiltTargetsByTransitiveDependencies"
                 )
             }
             graphStatistics.nodes.forEach {
@@ -156,7 +156,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
                     it.descendants,
                     it.changeRate,
                     it.descendantsChangeRate,
-                    it.spotifyBadness
+                    it.rebuiltTargetsByTransitiveDependencies
                 )
             }
         }.renderText().also {
