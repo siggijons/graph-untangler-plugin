@@ -107,6 +107,8 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
      * A breath first iterator is used to traverse the graph and calculate the height using
      * all vertices with 0 in degree as the roots. This is untested for graphs with multiple roots
      * but it could work.
+     *
+     * TODO: find more sane roots. Detect app? Do configuration?
      */
     private fun DefaultDirectedGraph<String, DependencyEdge>.nodeStatistics(): List<Pair<String, List<NodeStatistics>>> {
         val betweennessCentrality = BetweennessCentrality(this).scores
