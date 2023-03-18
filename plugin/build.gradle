@@ -42,7 +42,7 @@ gradlePlugin {
       id = 'net.siggijons.gradle.graphuntangler'
       displayName = 'Graph Untangler Plugin'
       description = 'Gradle plugin to help untangle your dependencies.'
-      tags.set(['graph', 'multiprojects', 'module', 'gradle'])
+      tags.set(['graph', 'multiprojects', 'module', 'betweenness', 'rttd'])
       implementationClass = 'net.siggijons.gradle.graphuntangler.GraphUntanglerPlugin'
     }
   }
