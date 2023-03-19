@@ -24,13 +24,13 @@ class GraphUntanglerPlugin : Plugin<Project> {
         val analyzeModuleGraphCsv =
             buildDirectory.file("untangler/analyzeModuleGraph.csv")
         val analyzeModuleGraphDot =
-            buildDirectory.file("untangler/analyzeModuleGraph.dot")
+            buildDirectory.file("untangler/analyzeModuleGraph.gv")
         val analyzeModuleGraphDotHeight =
-            buildDirectory.file("untangler/analyzeModuleGraph-height.dot")
+            buildDirectory.file("untangler/analyzeModuleGraph-height.gv")
         val analyzeModuleGraphDotReduced =
-            buildDirectory.file("untangler/analyzeModuleGraph-reduced.dot")
+            buildDirectory.file("untangler/analyzeModuleGraph-reduced.gv")
         val analyzeModuleGraphDotReducedOwners =
-            buildDirectory.file("untangler/analyzeModuleGraph-reduced-owners.dot")
+            buildDirectory.file("untangler/analyzeModuleGraph-reduced-owners.gv")
         val analyzeModuleOutputAdjacencyMatrix =
             buildDirectory.file("untangler/analyzeModuleGraph-adjacencyMatrix.txt")
         val isolatedSubgraphSize =

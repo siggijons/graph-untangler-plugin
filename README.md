@@ -111,18 +111,26 @@ tools:
 
 All plugin outputs can be found in the `build/untangler` directory.
 
-| File  | Description |
-| ------------- | ------------- |
-| `analyzeModuleGraph.dot` | Full Dependency Graph |
-| `analyzeModuleGraph-height.dot` | Dependency graph isolated to only include nodes that are part of the longest paths. |
-| `analyzeModuleGraph-reduced.dot` | Transitively reduced graph. Removes information but can be helpful in understanding the structure of large dependency graphs. |
-| `analyzeModuleGraph-adjacencyMatrix.txt` | Adjency Matrix that can be imported into other tools for further analysis. e.g. generating a co-occcurence matrix using pandas. |
-| `changeFrequency.txt` | CSV for the calculated change frequency of each module. |
-
+| File                                             | Description                                                                                                                                |
+|--------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| `analyzeModuleGraph.txt`                         | Text based graph analysis output                                                                                                           |
+| `analyzeModuleGraph.csv`                         | CSV based graph analysis output                                                                                                            |
+| `analyzeModuleGraph.gv`                          | Full Dependency Graph                                                                                                                      |
+| `analyzeModuleGraph-height.gv`                   | Dependency graph isolated to only include nodes that are part of the longest paths.                                                        |
+| `analyzeModuleGraph-reduced.gv`                  | Transitively reduced graph. Removes information but can be helpful in understanding the structure of large dependency graphs.              |
+| `analyzeModuleGraph-reduced-owners.gv`           | Transitively reduced graph. Colored by owners. Experimental. Only if owner data is available.                                              |
+| `analyzeModuleGraph-adjacencyMatrix.txt`         | Adjacency Matrix that can be imported into other tools for further analysis. e.g. generating a co-occurrence matrix using pandas.          |
+| `isolated-subgraph-size.csv`                     | Index of the size of each isolated subgraph. This can be an indicator of how connected, or exposed, a module is to the graph.              |
+| `changeFrequency.txt`                            | CSV for the calculated change frequency of each module.                                                                                    |
+| `projects/<module>-height.gv`                    | Height Graph for a module                                                                                                                  |   
+| `projects/<module>-isolated.gv`                  | Isolated Graph for a module. Created by removing all unconnected modules from the project graph.                                           |   
+| `projects/<module>-isolated-reduced.gv`          | Transitively reduced graph for a module. Removes information but can be helpful in understanding the structure of large dependency graphs. |
+| `projects/<module>-descendants-owners.csv`       | Experimental. Owners of all descendants of a module. Experimental. Only if owner data is available.                                        |
+| `projects/<module>-descendants-owners-count.csv` | Aggregation of descendants owner data. Experimental. Only if owner data is available.                                                      |
 
 Graphs can be rendered using the `dot` command from [Graphviz](https://graphviz.org/)
 ```
-$ dot -Tpng build/untangler/analyzeModuleGraph-height.dot -o analyzeModuleGraph-height.png
+$ dot -Tpng build/untangler/analyzeModuleGraph-height.gv -o analyzeModuleGraph-height.png
 ```
 
 Alternatively, the dependency graph can be imported into a tool such as [Gephi](https://gephi.org/) for further analysis.
