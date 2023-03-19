@@ -27,6 +27,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     @get:InputFile
     abstract val ownersFile: RegularFileProperty
 
+    @get:Optional
     @get:InputFile
     abstract val changeFrequencyFile: RegularFileProperty
 
@@ -95,7 +96,8 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     }
 
     private fun readFrequencyMap(): Map<String, Int> {
-        return changeFrequencyFile.get().asFile.readLines().drop(1).associate {
+        val file = changeFrequencyFile.orNull?.asFile ?: return emptyMap()
+        return file.readLines().drop(1).associate {
             val s = it.split(",")
             s[0] to s[1].toInt()
         }

@@ -38,15 +38,26 @@ class GraphUntanglerPlugin : Plugin<Project> {
         val projectGraphs =
             buildDirectory.dir("untangler/projects")
 
+        // Workaround for optional input file for owners.
+        // Plugin should work with or without this data present.
+        // This appears to be against task design guidelines
         val ownersFile = project.rootProject.layout.projectDirectory.file(extension.ownerFile)
             .let { file ->
                 project.provider { if (file.asFile.exists()) file else null }
             }
 
+        // Workaround for optional input file for change frequency.
+        // If present. Can be used to calculate RTTD
+        // When not available. Plugin continues to work and reports RTTD=0
+        val optionalChangeFrequencyFile = project.provider {
+            if (changeFrequencyFile.get().asFile.exists()) changeFrequencyFile.get()
+            else null
+        }
+
         project.tasks.register("analyzeModuleGraph", AnalyzeModuleGraphTask::class.java) { task ->
             task.configurationsToAnalyze.set(extension.configurationsToAnalyze)
             task.ownersFile.set(ownersFile)
-            task.changeFrequencyFile.set(changeFrequencyFile)
+            task.changeFrequencyFile.set(optionalChangeFrequencyFile)
             task.output.set(analyzeModuleGraph)
             task.outputCsv.set(analyzeModuleGraphCsv)
             task.outputDot.set(analyzeModuleGraphDot)
