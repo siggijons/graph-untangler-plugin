@@ -43,4 +43,20 @@ class OwnersTest {
         assertEquals("Owner", barOwner)
         assertEquals("Owner", bazOwner)
     }
+
+    @Test
+    fun `findOwner, given github team, should remove organization`() {
+        // Given
+        val owners = Owners(
+            ownerMap = mapOf(
+                ":foo" to "@SomeOrg/SomeTeam"
+            )
+        )
+
+        // When
+        val fooOwner = owners.findOwner(":foo")
+
+        // Then
+        assertEquals("SomeTeam", fooOwner)
+    }
 }

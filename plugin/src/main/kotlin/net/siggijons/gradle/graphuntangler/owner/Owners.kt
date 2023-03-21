@@ -10,6 +10,12 @@ class Owners(
     fun findOwner(
         project: String
     ): String? {
+        return findOwnerRaw(project)?.split("/", limit = 2)?.lastOrNull()
+    }
+
+    private fun findOwnerRaw(
+        project: String
+    ): String? {
         return ownerMap[project] ?: findPartialOwner(project)
     }
 
