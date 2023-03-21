@@ -32,7 +32,7 @@ compileTestKotlin {
 }
 
 group = 'net.siggijons.net'
-version = '0.0.3'
+version = '0.0.4'
 
 gradlePlugin {
   website = 'https://github.com/siggijons/graph-untangler-plugin'
