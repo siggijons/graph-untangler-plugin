@@ -1,24 +1,17 @@
 # Graph Untangler Plugin
 
 # Integration
-This plugin is unpublished but can be added to projects using `includeBuild`
-
-1. Checkout this repository
-2. Add to `settings.gradle`
-```
-includeBuild("/path/to/gradle-graph-untangler")
-```
-
-3. Add plugin to root `build.gradle`
+1. Add plugin to the root `build.gradle`
 ```
 // build.gradle
 plugins {
-  id("net.siggijons.gradle.graphuntangler")
+  id 'net.siggijons.gradle.graphuntangler' version 0.0.4
 }
 ```
 
-# Usage
+See also: https://plugins.gradle.org/plugin/net.siggijons.gradle.graphuntangler
 
+# Usage
 
 ## Analyze Module Graph
 ```
@@ -135,6 +128,22 @@ $ dot -Tpng build/untangler/analyzeModuleGraph-height.gv -o analyzeModuleGraph-h
 
 Alternatively, the dependency graph can be imported into a tool such as [Gephi](https://gephi.org/) for further analysis.
 
+# Development
+For development it's convenient to use `inlcudeBuild`. To do so follow these steps:
+
+1. Checkout this repository
+2. Add to `settings.gradle`
+```
+includeBuild("/path/to/gradle-graph-untangler")
+```
+
+3. Add plugin to root `build.gradle`
+```
+// build.gradle
+plugins {
+  id("net.siggijons.gradle.graphuntangler")
+}
+```
 
 # References
 
