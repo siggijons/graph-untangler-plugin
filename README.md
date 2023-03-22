@@ -6,7 +6,7 @@ This plugin is unpublished but can be added to projects using `includeBuild`
 1. Checkout this repository
 2. Add to `settings.gradle`
 ```
-includeBuild("/path/to/gradle-graph-untangler")
+includeBuild("/path/to/graph-untangler-plugin")
 ```
 
 3. Add plugin to root `build.gradle`
