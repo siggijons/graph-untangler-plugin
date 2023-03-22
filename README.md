@@ -2,7 +2,6 @@
 
 # Integration
 1. Add plugin to the root `build.gradle`
-
 ```
 // build.gradle
 plugins {
