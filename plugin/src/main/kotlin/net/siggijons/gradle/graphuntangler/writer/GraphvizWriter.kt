@@ -15,7 +15,7 @@ class GraphvizWriter {
     fun writeDotGraph(
         graph: AbstractGraph<DependencyNode, DependencyEdge>,
         file: File,
-        colorMode: ColorMode = ColorMode.CHANGE_RATE
+        colorMode: ColorMode = ColorMode.CHANGE_RATE,
     ) {
         val exporter = DOTExporter<DependencyNode, DependencyEdge> { vertex ->
             vertex.project.replace("-", "_").replace(".", "_").replace(":", "_")
@@ -43,7 +43,7 @@ class GraphvizWriter {
                 "%s | %d".format(v.project, it)
             } ?: v.project
             if (v.owner != null) {
-                label += "\n${v.owner}"
+                label += "\\n${v.owner}"
             }
 
             mapOf(
