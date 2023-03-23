@@ -10,7 +10,9 @@ import org.jgrapht.nio.DefaultAttribute
 import org.jgrapht.nio.dot.DOTExporter
 import java.io.File
 
-class GraphvizWriter {
+class GraphvizWriter(
+    private val labelStrategy: LabelStrategy = DefaultLabelStrategy()
+) {
 
     fun writeDotGraph(
         graph: AbstractGraph<DependencyNode, DependencyEdge>,
@@ -39,12 +41,7 @@ class GraphvizWriter {
                 ColorMode.OWNER -> colorMap[v.owner]
             }
 
-            var label = v.changeRate?.let {
-                "%s | %d".format(v.project, it)
-            } ?: v.project
-            if (v.owner != null) {
-                label += "\\n${v.owner}"
-            }
+            val label = labelStrategy.createLabel(v)
 
             mapOf(
                 "label" to DefaultAttribute.createAttribute(label),
