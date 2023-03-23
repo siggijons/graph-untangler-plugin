@@ -1,6 +1,7 @@
 package net.siggijons.gradle.graphuntangler.writer
 
 import net.siggijons.gradle.graphuntangler.graph.DependencyNode
+import net.siggijons.gradle.graphuntangler.writer.label.DefaultLabelStrategy
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

@@ -86,7 +86,7 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
             outputIsolatedSubgraphSize = outputIsolatedSubgraphSize.get().asFile
         )
 
-        logger.quiet("Analyzing Graph")
+        logger.quiet("Analyzing")
         AnalyzeModuleGraph().run(graph, outputs)
     }
 

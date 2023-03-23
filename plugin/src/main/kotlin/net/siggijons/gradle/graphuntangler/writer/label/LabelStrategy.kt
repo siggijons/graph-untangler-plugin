@@ -1,4 +1,4 @@
-package net.siggijons.gradle.graphuntangler.writer
+package net.siggijons.gradle.graphuntangler.writer.label
 
 import net.siggijons.gradle.graphuntangler.graph.DependencyNode
 

@@ -5,6 +5,8 @@ import net.siggijons.gradle.graphuntangler.color.rateColor
 import net.siggijons.gradle.graphuntangler.color.seriesColors
 import net.siggijons.gradle.graphuntangler.graph.DependencyEdge
 import net.siggijons.gradle.graphuntangler.graph.DependencyNode
+import net.siggijons.gradle.graphuntangler.writer.label.DefaultLabelStrategy
+import net.siggijons.gradle.graphuntangler.writer.label.LabelStrategy
 import org.jgrapht.graph.AbstractGraph
 import org.jgrapht.nio.DefaultAttribute
 import org.jgrapht.nio.dot.DOTExporter
