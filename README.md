@@ -2,7 +2,7 @@
 
 # Integration
 1. Add plugin to the root `build.gradle`
-```
+```groovy
 // build.gradle
 plugins {
   id 'net.siggijons.gradle.graphuntangler' version 0.0.4
@@ -14,7 +14,7 @@ See also: https://plugins.gradle.org/plugin/net.siggijons.gradle.graphuntangler
 # Usage
 
 ## Analyze Module Graph
-```
+```bash
 ./gradlew analyzeModuleGraph
 ```
 
@@ -23,12 +23,12 @@ Does not play well with configuration cache and up-to-date checks appear to be o
 reason of not treating the `Project` as an input.
 
 Workaround is to run without configuration cache and re-run tasks 
-```
+```bash
 ./gradlew analyzeModuleGraph --no-configuration-cache --rerun
 ```
 
 ## Calculate Module Change Freqency
-```
+```bash
 ./gradlew generateChangeFrequencyFile
 ```
 
@@ -36,7 +36,7 @@ This command assumes git is being used as SCV and will run `git log` commands vi
 
 By default, the command looks at 28 days back from today. This behavior can be overwritten with properties:
 
-```
+```bash
 ./gradlew generateChangeFrequencyFile -Pfrequency-start=2021-12-10 -Pfrequency-days=14 --info
 ```
 
@@ -45,7 +45,7 @@ This will look at 14 days back from 2021-12-10.
 Note: the task uses `git log --follow --format=oneline --since=<date>`, so implicitly assumes that the current `HEAD` is at `frequency-start` for the lookback.
 The idea is to use support something like this to look back in time:
 
-```
+```bash
 # Analyze Graph like it was on 2021-12-13
 git checkout `git rev-list -n 1 --before="2021-12-13 00:00" HEAD`
 ./gradlew generateChangeFrequencyFile -Pfrequency-start=2021-12-13 -Pfrequency-days=28
@@ -122,8 +122,8 @@ All plugin outputs can be found in the `build/untangler` directory.
 | `projects/<module>-descendants-owners-count.csv` | Aggregation of descendants owner data. Experimental. Only if owner data is available.                                                      |
 
 Graphs can be rendered using the `dot` command from [Graphviz](https://graphviz.org/)
-```
-$ dot -Tpng build/untangler/analyzeModuleGraph-height.gv -o analyzeModuleGraph-height.png
+```bash
+dot -Tpng build/untangler/analyzeModuleGraph-height.gv -o analyzeModuleGraph-height.png
 ```
 
 Alternatively, the dependency graph can be imported into a tool such as [Gephi](https://gephi.org/) for further analysis.
@@ -133,12 +133,12 @@ For development it's convenient to use `inlcudeBuild`. To do so follow these ste
 
 1. Checkout this repository
 2. Add to `settings.gradle`
-```
+```bash
 includeBuild("/path/to/graph-untangler-plugin")
 ```
 
 3. Add plugin to root `build.gradle`
-```
+```groovy
 // build.gradle
 plugins {
   id("net.siggijons.gradle.graphuntangler")
