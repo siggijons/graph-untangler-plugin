@@ -134,7 +134,7 @@ For development it's convenient to use `inlcudeBuild`. To do so follow these ste
 1. Checkout this repository
 2. Add to `settings.gradle`
 ```bash
-includeBuild("/path/to/gradle-graph-untangler")
+includeBuild("/path/to/graph-untangler-plugin")
 ```
 
 3. Add plugin to root `build.gradle`
