@@ -4,16 +4,16 @@ import org.yaml.snakeyaml.Yaml
 import java.io.File
 import java.io.InputStream
 
-class OwnerFileReader {
+class OwnerFileReader : OwnersReader {
 
-    fun read(string: String): Owners {
-        return string.byteInputStream().use { read(it) }
-    }
-
-    fun read(file: File): Owners {
+    override fun read(file: File): Owners {
         return file.inputStream().use {
             read(it)
         }
+    }
+
+    fun read(string: String): Owners {
+        return string.byteInputStream().use { read(it) }
     }
 
     @Suppress("UNCHECKED_CAST")
