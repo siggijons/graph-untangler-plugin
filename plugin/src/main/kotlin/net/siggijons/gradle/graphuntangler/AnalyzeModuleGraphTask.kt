@@ -2,6 +2,7 @@ package net.siggijons.gradle.graphuntangler
 
 import net.siggijons.gradle.graphuntangler.graph.DependencyEdge
 import net.siggijons.gradle.graphuntangler.graph.DependencyNode
+import net.siggijons.gradle.graphuntangler.owner.GitHubCodeOwnersReader
 import net.siggijons.gradle.graphuntangler.owner.OwnerFileReader
 import net.siggijons.gradle.graphuntangler.owner.Owners
 import org.gradle.api.DefaultTask
@@ -91,8 +92,9 @@ abstract class AnalyzeModuleGraphTask : DefaultTask() {
     }
 
     private fun readOwners(): Owners {
-        val file = ownersFile.orNull ?: return Owners(ownerMap = emptyMap())
-        return OwnerFileReader().read(file.asFile)
+        val file = ownersFile.orNull?.asFile ?: return Owners(ownerMap = emptyMap())
+        return if (file.name == "CODEOWNERS") GitHubCodeOwnersReader().read(file)
+        else OwnerFileReader().read(file)
     }
 
     private fun readFrequencyMap(): Map<String, Int> {
