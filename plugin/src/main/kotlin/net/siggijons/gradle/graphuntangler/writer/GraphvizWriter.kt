@@ -46,11 +46,13 @@ class GraphvizWriter {
                 label += "\n${v.owner}"
             }
 
-            mapOf(
-                "label" to DefaultAttribute.createAttribute(label),
-                "style" to DefaultAttribute.createAttribute("filled"),
-                "fillcolor" to DefaultAttribute.createAttribute(color)
-            )
+            buildMap {
+                put("label", DefaultAttribute.createAttribute(label))
+                color?.let {
+                    put("style", DefaultAttribute.createAttribute("filled"))
+                    put("fillcolor", DefaultAttribute.createAttribute(it))
+                }
+            }
         }
 
         file.delete()
