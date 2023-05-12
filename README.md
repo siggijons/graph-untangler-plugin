@@ -129,7 +129,7 @@ dot -Tpng build/untangler/analyzeModuleGraph-height.gv -o analyzeModuleGraph-hei
 Alternatively, the dependency graph can be imported into a tool such as [Gephi](https://gephi.org/) for further analysis.
 
 # Development
-For development it's convenient to use `inlcudeBuild`. To do so follow these steps:
+For development it's convenient to use `includeBuild`. To do so follow these steps:
 
 1. Checkout this repository
 2. Add to `settings.gradle`
