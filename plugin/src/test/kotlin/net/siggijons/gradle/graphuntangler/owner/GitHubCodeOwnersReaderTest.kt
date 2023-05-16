@@ -156,4 +156,24 @@ class GitHubCodeOwnersReaderTest {
             owners.ownerMap
         )
     }
+
+    @Test
+    fun `read - given mixed spaces for alignment and comments, should read correctly`() {
+        val contents = """
+            /module-dir       @team-one  # no owner
+            /other-module-dir @team-one  # single space, attributed properly
+            /one-more.        @team-one  # no owner
+        """.trimIndent()
+
+        val owners = reader.read(contents)
+
+        assertEquals(
+            mapOf(
+                ":module-dir" to "@team-one",
+                ":other-module-dir" to "@team-one",
+                ":one-more." to "@team-one" // not sure about that dot?
+            ),
+            owners.ownerMap
+        )
+    }
 }

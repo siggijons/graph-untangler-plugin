@@ -5,7 +5,7 @@ import java.io.InputStream
 
 class GitHubCodeOwnersReader : OwnersReader {
 
-    private val blank = "/\\s\\s+/".toRegex()
+    private val blank = "\\s\\s+".toRegex()
 
     override fun read(file: File): Owners {
         return file.inputStream().use {
