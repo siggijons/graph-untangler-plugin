@@ -100,6 +100,30 @@ tools:
     - :ui-test-hilt-manifest
 ```
 
+### GitHub CODEOWNERS
+Alternatively (or by default?) the tool will try to parse out module ownership from the 
+[`./github/CODEOWNERS`][1] file.
+
+TODO: list out limitations and assumptions like wildcard folding.
+
+```
+/app @App
+/feature/settings @App
+
+/feature/foryou @Feature
+/feature/interests @Feature
+/feature/bookmarks @Feature
+/feature/topic @Feature
+
+/core @Core
+/sync @Core
+
+/app-nia-catalog @Tools
+/benchmarks @Tools
+/lint @Tools
+/ui-test-hilt-manifest @Tools
+```
+
 ## Outputs
 
 All plugin outputs can be found in the `build/untangler` directory.
@@ -129,7 +153,7 @@ dot -Tpng build/untangler/analyzeModuleGraph-height.gv -o analyzeModuleGraph-hei
 Alternatively, the dependency graph can be imported into a tool such as [Gephi](https://gephi.org/) for further analysis.
 
 # Development
-For development it's convenient to use `inlcudeBuild`. To do so follow these steps:
+For development it's convenient to use `includeBuild`. To do so follow these steps:
 
 1. Checkout this repository
 2. Add to `settings.gradle`
@@ -152,3 +176,6 @@ plugins {
 * [Dependency Analysis Gradle Plugin](https://github.com/autonomousapps/dependency-analysis-android-gradle-plugin)
 * [Driving architectural improvements with dependency metrics - Karl Erliksson, John Kvarnefalk @ BazelCon 2022](https://www.youtube.com/watch?v=k4H20WxhbsA)
 
+
+
+[1]: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
